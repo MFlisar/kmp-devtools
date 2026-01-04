@@ -61,7 +61,7 @@ object ScriptUtil {
                     println("--- ${index + 1}: ${step.name}")
                 }
                 println("------------------------")
-                println("- Select actions to run (input: \"1, 2, 3\" or \"1-3, 4\" etc. or \"a\" to run all)")
+                println("- Select actions to run (input: \"1, 2, 3\" or \"1-3, 4\" etc. or \"a\" to run all) [DEFAULT: \"$defaultInput\"]")
                 println("------------------------")
 
                 // 3) get user input
