@@ -10,11 +10,12 @@ object ReadmeDefaults {
     val headerScreenshots = ReadmeRegion("camera", "Screenshots")
     val headerSupportedPlatform = ReadmeRegion("computer", "Supported Platforms")
     val headerSetup = ReadmeRegion("wrench", "Setup")
-    val headerUsage = ReadmeRegion("page_facing_up", "Usage")
+    val headerUsage = ReadmeRegion("rocket", "Usage")
     val headerModules = ReadmeRegion("file_folder", "Modules")
     val headerDemo = ReadmeRegion("sparkles", "Demo")
     val headerMore = ReadmeRegion("information_source", "More")
     val headerOtherLibraries = ReadmeRegion("bulb", "Other Libraries")
+    val headerApiDocs = ReadmeRegion("books", "API Documentation")
 
     val allHeaders = listOf(
         headerTableOfContent,
@@ -25,7 +26,8 @@ object ReadmeDefaults {
         headerModules,
         headerDemo,
         headerMore,
-        headerOtherLibraries
+        headerOtherLibraries,
+        headerApiDocs
     )
 
     val DefaultReadmeTemplate = """
@@ -98,6 +100,10 @@ object ReadmeDefaults {
         ${headerMore.markdownHeader()}
 
         {{ links }}
+        
+        ${headerApiDocs.markdownHeader()}
+        
+        {{ api-docs }}
         
         ${headerOtherLibraries.markdownHeader()}
         

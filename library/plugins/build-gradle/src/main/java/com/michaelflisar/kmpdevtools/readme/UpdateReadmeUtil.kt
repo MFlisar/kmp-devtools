@@ -15,12 +15,18 @@ object UpdateReadmeUtil {
         config: Config = Config.read(project),
         libraryConfig: LibraryConfig = LibraryConfig.read(project),
         readmeTemplate: String = ReadmeDefaults.DefaultReadmeTemplate,
+        folderModules: String = "modules",
+        folderScreenshots: String = "screenshots",
+        hasApiDocs: Boolean = true,
     ) {
         update(
             rootDir = project.rootDir,
             config = config,
             libraryConfig = libraryConfig,
-            readmeTemplate = readmeTemplate
+            readmeTemplate = readmeTemplate,
+            folderModules = folderModules,
+            folderScreenshots = folderScreenshots,
+            hasApiDocs = hasApiDocs,
         )
     }
 
@@ -32,6 +38,9 @@ object UpdateReadmeUtil {
         config: Config,
         libraryConfig: LibraryConfig,
         readmeTemplate: String,
+        folderModules: String = "modules",
+        folderScreenshots: String = "screenshots",
+        hasApiDocs: Boolean = true,
     ) {
         println("")
         println("#####################################")
@@ -45,8 +54,8 @@ object UpdateReadmeUtil {
         val fileAppVersionToml = File(rootDir, "gradle/app.versions.toml")
         val fileReadme = File(rootDir, "README.md")
         val folderDocumentation = File(rootDir, "documentation")
-        val folderDocumentationModules = File(rootDir, "documentation/modules")
-        val folderDocumentationScreenshots = File(rootDir, "documentation/screenshots")
+        val folderDocumentationModules = File(rootDir, "documentation/$folderModules")
+        val folderDocumentationScreenshots = File(rootDir, "documentation/$folderScreenshots")
 
         // load data from project files
         val minSdk = readTOMLProperty(fileAppVersionToml, "versions", "minSdk").toInt()
@@ -187,6 +196,13 @@ object UpdateReadmeUtil {
             "A full [demo](/demo) is included inside the demo module, it shows nearly every usage with working examples."
         else ""
 
+        val apiDocs = if (hasApiDocs) {
+            val link = "https://${config.developer.githubUserName}.github.io/${libraryConfig.library.name}/"
+            "Check out the [API documentation]($link)."
+        } else {
+            ""
+        }
+
         // 7) read template content
         var readmeContent = readmeTemplate
 
@@ -214,6 +230,7 @@ object UpdateReadmeUtil {
             Placeholder("{{ screenshots }}", screenshots.joinToString("\n")),
             Placeholder("{{ other-libraries }}", libraryConfig.library.otherLibraries),
             Placeholder("{{ demo }}", demo),
+            Placeholder("{{ api-docs }}", apiDocs),
         )
         for (replacement in replacements) {
             readmeContent = replacement.replace(readmeContent)
