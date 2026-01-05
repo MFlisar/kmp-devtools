@@ -15,7 +15,7 @@ data class LibraryConfig(
 ) {
     companion object {
 
-        val relativePath = "configs/library-config.yml"
+        const val relativePath = "configs/library-config.yml"
 
         fun read(project: org.gradle.api.initialization.ProjectDescriptor) =
             readFromProject(project.projectDir)
