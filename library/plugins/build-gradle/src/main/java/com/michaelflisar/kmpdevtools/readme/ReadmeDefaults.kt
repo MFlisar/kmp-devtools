@@ -39,9 +39,7 @@ object ReadmeDefaults {
     val DefaultReadmeTemplate = """
         {{ header }}
 
-        {{ partials.introduction }}
-
-        {{ partials.features }}
+        {{ partials.info }}
 
         ${headerTableOfContent.markdownHeader()}
         

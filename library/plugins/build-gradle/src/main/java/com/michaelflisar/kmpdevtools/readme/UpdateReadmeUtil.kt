@@ -187,12 +187,8 @@ object UpdateReadmeUtil {
         val replacements = listOf(
             Placeholder("{{ header }}", header),
             Partial(
-                "{{ partials.introduction }}",
-                File(rootDir, "documentation/_partials/introduction.md.partial")
-            ),
-            Partial(
-                "{{ partials.features }}",
-                File(rootDir, "documentation/_partials/features.md.partial")
+                "{{ partials.info }}",
+                File(rootDir, "documentation/_partials/info.md.partial")
             ),
             Partial(
                 "{{ partials.usage }}",
