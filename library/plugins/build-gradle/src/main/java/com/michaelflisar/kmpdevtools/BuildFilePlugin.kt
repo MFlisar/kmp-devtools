@@ -12,10 +12,12 @@ import com.michaelflisar.kmpdevtools.tooling.ToolingSetup
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.TaskAction
 import javax.inject.Inject
@@ -68,6 +70,9 @@ class BuildFilePlugin : Plugin<Project> {
  */
 abstract class ConfigDependentTask : DefaultTask() {
 
+    @get:InputDirectory
+    abstract val rootDirectory: DirectoryProperty
+
     @get:InputFile
     abstract val configFile: RegularFileProperty
 
@@ -75,6 +80,7 @@ abstract class ConfigDependentTask : DefaultTask() {
     abstract val libraryConfigFile: RegularFileProperty
 
     init {
+        rootDirectory.convention(project.rootProject.layout.projectDirectory)
         configFile.convention(project.rootProject.layout.projectDirectory.file(Config.relativePath))
         libraryConfigFile.convention(project.rootProject.layout.projectDirectory.file(LibraryConfig.relativePath))
     }
@@ -104,10 +110,10 @@ abstract class UpdateMarkdownFilesTask : ConfigDependentTask() {
 
     @TaskAction
     fun run() {
-        val config = Config.read(project.rootProject)
-        val libraryConfig = LibraryConfig.read(project.rootProject)
+        val config = Config.readFromFile(rootDirectory.get().asFile)
+        val libraryConfig = LibraryConfig.readFromFile(rootDirectory.get().asFile)
         UpdateReadmeUtil.update(
-            rootDir = project.rootDir,
+            rootDir = rootDirectory.get().asFile,
             config = config,
             libraryConfig = libraryConfig,
             readmeTemplate = template.get(),
@@ -122,15 +128,20 @@ abstract class MacActionsTask : ConfigDependentTask() {
 
     @TaskAction
     fun run() {
+        val config = Config.readFromFile(rootDirectory.get().asFile)
+        val libraryConfig = LibraryConfig.readFromFile(rootDirectory.get().asFile)
+
         val sshSetup = MacDefaults.getMacSSHSetup()
-        val relativePathRoot = MacDefaults.getRelativePathRoot(project.rootProject)
+        val relativePathRoot =
+            MacDefaults.getRelativePathRoot(rootDirectory.get().asFile, libraryConfig)
         val toolingSetup = ToolingSetup(
             root = relativePathRoot
         )
         MacActions.run(
-            project = project.rootProject,
+            projectRootDirectory = rootDirectory.get().asFile,
             sshSetup = sshSetup,
-            toolingSetup = toolingSetup
+            toolingSetup = toolingSetup,
+            libraryConfig = libraryConfig,
         )
     }
 }

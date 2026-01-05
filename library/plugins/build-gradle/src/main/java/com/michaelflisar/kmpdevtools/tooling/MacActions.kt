@@ -7,16 +7,15 @@ import com.michaelflisar.kmpdevtools.core.utils.SSHSetup
 import com.michaelflisar.kmpdevtools.core.utils.SSHUtil
 import com.michaelflisar.kmpdevtools.core.utils.ScriptStep
 import com.michaelflisar.kmpdevtools.core.utils.ScriptUtil
-import org.gradle.api.Project
 import java.io.File
 
 object MacActions {
 
     fun run(
-        project: Project,
+        projectRootDirectory: File,
         sshSetup: SSHSetup,
         toolingSetup: ToolingSetup,
-        libraryConfig: LibraryConfig = LibraryConfig.read(project),
+        libraryConfig: LibraryConfig,
         defaultInput: String = "1,2",
     ) {
 
@@ -39,7 +38,7 @@ object MacActions {
         val steps = listOf(
             ScriptStep("Sync to Mac") {
                 syncToMac(
-                    project = project,
+                    projectRootDirectory = projectRootDirectory,
                     libraryConfig = libraryConfig,
                     sshSetup = sshSetup,
                     toolingSetup = toolingSetup
@@ -83,7 +82,7 @@ object MacActions {
 }
 
 private fun syncToMac(
-    project: Project,
+    projectRootDirectory: File,
     libraryConfig: LibraryConfig,
     sshSetup: SSHSetup,
     toolingSetup: ToolingSetup,
@@ -103,7 +102,7 @@ private fun syncToMac(
     val executables = toolingSetup.getExecutables()
 
     val projectName = libraryConfig.library.name
-    val projectRootDirectory = project.rootDir.absolutePath
+    val projectRootDirectory = projectRootDirectory.absolutePath
     val projectRemoteRootDirectory = toolingSetup.root.remote
 
     // ----------------------
@@ -226,7 +225,8 @@ private fun buildXCFramework(
 
         // 1) get script file content from resources/build_xcframework.sh as stream
         val scriptFileName = "build_xcframework.sh"
-        val resourceStream = MacActions::class.java.classLoader.getResourceAsStream(scriptFileName) ?: error("Resource not found: $scriptFileName")
+        val resourceStream = MacActions::class.java.classLoader.getResourceAsStream(scriptFileName)
+            ?: error("Resource not found: $scriptFileName")
 
         // 2) save script file stream to a local temp file
         val tmpScriptFile = File.createTempFile("build_xcframework", ".sh")
@@ -237,12 +237,16 @@ private fun buildXCFramework(
         val scpScriptCmd = mutableListOf("scp", "-P", sshSetup.port.toString())
         if (File(sshSetup.keyPath).exists())
             scpScriptCmd += listOf("-i", sshSetup.keyPath)
-        scpScriptCmd += listOf(tmpScriptFile.absolutePath, "${sshSetup.user}@${sshSetup.host}:$remoteScriptFile")
+        scpScriptCmd += listOf(
+            tmpScriptFile.absolutePath,
+            "${sshSetup.user}@${sshSetup.host}:$remoteScriptFile"
+        )
         CMDUtil.runOrThrow(scpScriptCmd, "scp upload of script failed.")
         tmpScriptFile.delete()
 
         // 4) run script
-        val command1 = "cd '$projectRemoteRootDirectory' && chmod +x '$scriptFileName' && $env './$scriptFileName'"
+        val command1 =
+            "cd '$projectRemoteRootDirectory' && chmod +x '$scriptFileName' && $env './$scriptFileName'"
         SSHUtil.ssh(command1, sshSetup)
 
         // 5) xcframework zurück kopieren

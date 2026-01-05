@@ -4,6 +4,7 @@ import com.michaelflisar.kmpdevtools.core.classes.RelativePath
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
 import com.michaelflisar.kmpdevtools.core.utils.SSHSetup
 import org.gradle.api.Project
+import java.io.File
 
 object MacDefaults {
 
@@ -22,6 +23,15 @@ object MacDefaults {
         macTargetRootDir: String = "/Users/mflisar/dev",
     ) = RelativePath.Root(
         local = project.rootDir.absolutePath,
+        remote = "$macTargetRootDir/${libraryConfig.library.name}"
+    )
+
+    fun getRelativePathRoot(
+        rootDirectory: File,
+        libraryConfig: LibraryConfig,
+        macTargetRootDir: String = "/Users/mflisar/dev",
+    ) = RelativePath.Root(
+        local = rootDirectory.absolutePath,
         remote = "$macTargetRootDir/${libraryConfig.library.name}"
     )
 }

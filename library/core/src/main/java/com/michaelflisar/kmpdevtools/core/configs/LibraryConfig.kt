@@ -22,6 +22,7 @@ data class LibraryConfig(
 
         fun read(project: Project) = readFromProject(project.rootDir)
         fun readFromProject(root: File) = read(root, relativePath)
+        fun readFromFile(file: File) = read(file)
 
         private fun read(root: File, relativePath: String): LibraryConfig {
             return read(File(root, relativePath))
