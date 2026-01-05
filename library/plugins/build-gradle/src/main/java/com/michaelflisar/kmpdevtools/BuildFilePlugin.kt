@@ -49,9 +49,11 @@ class BuildFilePlugin : Plugin<Project> {
         }
 
         // 3) register tasks
-        project.tasks.register("updateMarkdownFiles", UpdateMarkdownFilesTask::class.java)
-        project.tasks.register("macActions", MacActionsTask::class.java)
-        project.tasks.register("renameProject", RenameProjectTask::class.java)
+        if (project == project.rootProject) {
+            project.tasks.register("updateMarkdownFiles", UpdateMarkdownFilesTask::class.java)
+            project.tasks.register("macActions", MacActionsTask::class.java)
+            project.tasks.register("renameProject", RenameProjectTask::class.java)
+        }
     }
 }
 
