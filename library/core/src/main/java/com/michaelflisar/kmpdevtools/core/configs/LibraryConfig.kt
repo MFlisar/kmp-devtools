@@ -15,9 +15,13 @@ data class LibraryConfig(
 ) {
     companion object {
 
-        fun read(project: org.gradle.api.initialization.ProjectDescriptor) = readFromProject(project.projectDir)
+        val relativePath = "configs/library-config.yml"
+
+        fun read(project: org.gradle.api.initialization.ProjectDescriptor) =
+            readFromProject(project.projectDir)
+
         fun read(project: Project) = readFromProject(project.rootDir)
-        fun readFromProject(root: File) = read(root, "configs/library-config.yml")
+        fun readFromProject(root: File) = read(root, relativePath)
 
         private fun read(root: File, relativePath: String): LibraryConfig {
             return read(File(root, relativePath))
@@ -60,7 +64,6 @@ data class LibraryConfig(
         val release: Int,
         val namespace: String,
         val license: License,
-        @SerialName("other-libraries") val otherLibraries: String
     ) {
         fun getRepoLink(developer: Config.Developer): String {
             return "https://github.com/{${developer.githubUserName}}/${name}/"

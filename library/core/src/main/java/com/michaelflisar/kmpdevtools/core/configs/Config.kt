@@ -13,9 +13,11 @@ data class Config(
 ) {
     companion object {
 
+        val relativePath = "configs/config.yml"
+
         fun read(project: org.gradle.api.initialization.ProjectDescriptor) = readFromProject(project.projectDir)
         fun read(project: Project) = readFromProject(project.rootDir)
-        fun readFromProject(root: File) = read(root, "configs/config.yml")
+        fun readFromProject(root: File) = read(root, relativePath)
 
         private fun read(root: File, relativePath: String): Config {
             return read(File(root, relativePath))

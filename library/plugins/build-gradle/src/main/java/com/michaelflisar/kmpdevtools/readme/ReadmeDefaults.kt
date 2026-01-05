@@ -6,6 +6,10 @@ import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
 
 object ReadmeDefaults {
 
+    const val FOLDER_MODULES = "modules"
+    const val FOLDER_SCREENSHOTS = "screenshots"
+    const val HAS_API_DOCS = true
+
     val headerTableOfContent = ReadmeRegion("information_source", "Table of Contents")
     val headerScreenshots = ReadmeRegion("camera", "Screenshots")
     val headerSupportedPlatform = ReadmeRegion("computer", "Supported Platforms")
@@ -29,6 +33,8 @@ object ReadmeDefaults {
         headerOtherLibraries,
         headerApiDocs
     )
+
+    val GithubMyLibrariesLink = "https://mflisar.github.io/Libraries/"// "https://github.com/MFlisar/Libraries"
 
     val DefaultReadmeTemplate = """
         {{ header }}

@@ -2,33 +2,9 @@ package com.michaelflisar.kmpdevtools.readme
 
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
-import org.gradle.api.Project
 import java.io.File
 
 object UpdateReadmeUtil {
-
-    /**
-     * Updates the README.md file in the given project based on the provided configuration and template.
-     */
-    fun update(
-        project: Project,
-        config: Config = Config.read(project),
-        libraryConfig: LibraryConfig = LibraryConfig.read(project),
-        readmeTemplate: String = ReadmeDefaults.DefaultReadmeTemplate,
-        folderModules: String = "modules",
-        folderScreenshots: String = "screenshots",
-        hasApiDocs: Boolean = true,
-    ) {
-        update(
-            rootDir = project.rootDir,
-            config = config,
-            libraryConfig = libraryConfig,
-            readmeTemplate = readmeTemplate,
-            folderModules = folderModules,
-            folderScreenshots = folderScreenshots,
-            hasApiDocs = hasApiDocs,
-        )
-    }
 
     /**
      * Updates the README.md file in the given root directory based on the provided configuration and template.
@@ -37,10 +13,10 @@ object UpdateReadmeUtil {
         rootDir: File,
         config: Config,
         libraryConfig: LibraryConfig,
-        readmeTemplate: String,
-        folderModules: String = "modules",
-        folderScreenshots: String = "screenshots",
-        hasApiDocs: Boolean = true,
+        readmeTemplate: String = ReadmeDefaults.DefaultReadmeTemplate,
+        folderModules: String = ReadmeDefaults.FOLDER_MODULES,
+        folderScreenshots: String = ReadmeDefaults.FOLDER_SCREENSHOTS,
+        hasApiDocs: Boolean = ReadmeDefaults.HAS_API_DOCS,
     ) {
         println("")
         println("#####################################")
@@ -197,7 +173,8 @@ object UpdateReadmeUtil {
         else ""
 
         val apiDocs = if (hasApiDocs) {
-            val link = "https://${config.developer.githubUserName}.github.io/${libraryConfig.library.name}/"
+            val link =
+                "https://${config.developer.githubUserName}.github.io/${libraryConfig.library.name}/"
             "Check out the [API documentation]($link)."
         } else {
             ""
@@ -228,7 +205,7 @@ object UpdateReadmeUtil {
             Placeholder("{{ setup-via-version-catalogue1 }}", setupViaVersionCatalogue1),
             Placeholder("{{ setup-via-version-catalogue2 }}", setupViaVersionCatalogue2),
             Placeholder("{{ screenshots }}", screenshots.joinToString("\n")),
-            Placeholder("{{ other-libraries }}", libraryConfig.library.otherLibraries),
+            Placeholder("{{ other-libraries }}", ReadmeDefaults.GithubMyLibrariesLink),
             Placeholder("{{ demo }}", demo),
             Placeholder("{{ api-docs }}", apiDocs),
         )
