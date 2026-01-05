@@ -110,8 +110,8 @@ abstract class UpdateMarkdownFilesTask : ConfigDependentTask() {
 
     @TaskAction
     fun run() {
-        val config = Config.readFromFile(rootDirectory.get().asFile)
-        val libraryConfig = LibraryConfig.readFromFile(rootDirectory.get().asFile)
+        val config = Config.readFromProject(rootDirectory.get().asFile)
+        val libraryConfig = LibraryConfig.readFromProject(rootDirectory.get().asFile)
         UpdateReadmeUtil.update(
             rootDir = rootDirectory.get().asFile,
             config = config,
@@ -128,15 +128,11 @@ abstract class MacActionsTask : ConfigDependentTask() {
 
     @TaskAction
     fun run() {
-        val config = Config.readFromFile(rootDirectory.get().asFile)
-        val libraryConfig = LibraryConfig.readFromFile(rootDirectory.get().asFile)
-
+        val libraryConfig = LibraryConfig.readFromProject(rootDirectory.get().asFile)
         val sshSetup = MacDefaults.getMacSSHSetup()
         val relativePathRoot =
             MacDefaults.getRelativePathRoot(rootDirectory.get().asFile, libraryConfig)
-        val toolingSetup = ToolingSetup(
-            root = relativePathRoot
-        )
+        val toolingSetup = ToolingSetup(relativePathRoot)
         MacActions.run(
             projectRootDirectory = rootDirectory.get().asFile,
             sshSetup = sshSetup,
@@ -150,7 +146,8 @@ abstract class RenameProjectTask : ConfigDependentTask() {
 
     @TaskAction
     fun run() {
-        val data = ProjectData(project = project.rootProject)
+        val libraryConfig = LibraryConfig.readFromProject(rootDirectory.get().asFile)
+        val data = ProjectData(rootDirectory.get().asFile, libraryConfig)
         ProjectActions.runProjectRenamer(data)
     }
 }

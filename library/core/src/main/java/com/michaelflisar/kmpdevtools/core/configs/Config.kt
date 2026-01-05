@@ -18,7 +18,6 @@ data class Config(
         fun read(project: org.gradle.api.initialization.ProjectDescriptor) = readFromProject(project.projectDir)
         fun read(project: Project) = readFromProject(project.rootDir)
         fun readFromProject(root: File) = read(root, relativePath)
-        fun readFromFile(file: File) = read(file)
 
         private fun read(root: File, relativePath: String): Config {
             return read(File(root, relativePath))

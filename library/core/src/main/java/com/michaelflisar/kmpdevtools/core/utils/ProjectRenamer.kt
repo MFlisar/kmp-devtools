@@ -13,6 +13,19 @@ class ProjectData(
     val root: File = File(System.getProperty("user.dir")),
 ) {
     constructor(
+        projectRootDirectory: File,
+        libraryConfig: LibraryConfig,
+        pathStateFile: String = "configs/state.properties",
+        pathRunConfigFolders: String = ".run",
+    ) : this(
+        packageNameTo = libraryConfig.library.namespace,
+        libraryNameTo = libraryConfig.library.name,
+        pathStateFile = pathStateFile,
+        pathRunConfigFolders = pathRunConfigFolders,
+        root = projectRootDirectory,
+    )
+
+    constructor(
         project: Project,
         libraryConfig: LibraryConfig = LibraryConfig.read(project),
         pathStateFile: String = "configs/state.properties",
