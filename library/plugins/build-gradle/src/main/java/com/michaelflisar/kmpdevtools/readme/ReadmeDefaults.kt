@@ -30,8 +30,8 @@ object ReadmeDefaults {
         headerModules,
         headerDemo,
         headerMore,
-        headerOtherLibraries,
-        headerApiDocs
+        headerApiDocs,
+        headerOtherLibraries
     )
 
     val GithubMyLibrariesLink = "https://mflisar.github.io/Libraries/"// "https://github.com/MFlisar/Libraries"
