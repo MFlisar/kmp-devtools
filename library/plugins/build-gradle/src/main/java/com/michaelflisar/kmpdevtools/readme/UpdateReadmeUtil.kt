@@ -2,6 +2,8 @@ package com.michaelflisar.kmpdevtools.readme
 
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.readme.classes.Partial
+import com.michaelflisar.kmpdevtools.readme.classes.Placeholder
 import java.io.File
 
 object UpdateReadmeUtil {
@@ -210,32 +212,40 @@ object UpdateReadmeUtil {
         }
 
         // 9) remove headers (lines starting with #) without content after them until the next header
-        val lines = readmeContent.lines()
-        val cleanedLines = mutableListOf<String>()
+        // logik neu: falls 2 aufeinanderfolgende header aus ReadmeDefaults.allHeaders ohne content dazwischen existieren (nur whitespaces, leere zeilen),
+        // dann wird der header ohne content entfernt
+        val allMarkdownHeaders = ReadmeDefaults.allHeaders.map { it.markdownHeader() }
+        var lastFoundHeaderIndexWithoutContentBelow = -1
+        val lines = readmeContent.lines().toMutableList()
         var i = 0
         while (i < lines.size) {
             val line = lines[i]
-            if (line.trim().startsWith("#")) {
-                // Suche nach dem nächsten Header oder Dateiende
-                var j = i + 1
-                var onlyEmpty = true
-                while (j < lines.size && !lines[j].trim().startsWith("#")) {
-                    if (lines[j].isNotBlank()) {
-                        onlyEmpty = false
-                        break
+            val trimmedLine = line.trim()
+            val headerIndex = allMarkdownHeaders.indexOf(trimmedLine)
+
+            if (headerIndex != -1) {
+                if (lastFoundHeaderIndexWithoutContentBelow != -1 && lastFoundHeaderIndexWithoutContentBelow == headerIndex - 1) {
+                    // der letzte header hatte keinen content darunter und ist direkt vor dem aktuellen header
+                    // also entferne den letzten header aus cleanedLines
+                    for (j in lines.size - 1 downTo 0) {
+                        if (lines[j].trim() == allMarkdownHeaders[lastFoundHeaderIndexWithoutContentBelow]) {
+                            lines.removeAt(j)
+                            break
+                        }
                     }
-                    j++
                 }
-                if (onlyEmpty) {
-                    // Überspringe Header und alle leeren Zeilen danach
-                    i = j
-                    continue
+                lastFoundHeaderIndexWithoutContentBelow = headerIndex
+            } else {
+                if (trimmedLine.isEmpty()) {
+                    // leere Zeile
+                } else {
+                    // nicht leere Zeile - aktueller header hat content darunter
+                    lastFoundHeaderIndexWithoutContentBelow = -1
                 }
             }
-            cleanedLines.add(line)
             i++
         }
-        readmeContent = cleanedLines.joinToString("\n")
+        readmeContent = lines.joinToString("\n")
 
         // 10)  replacement - table of content
         val tableOfContent = ReadmeDefaults.allHeaders

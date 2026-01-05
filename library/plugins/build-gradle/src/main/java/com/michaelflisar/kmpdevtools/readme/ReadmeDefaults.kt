@@ -3,6 +3,7 @@ package com.michaelflisar.kmpdevtools.readme
 import com.michaelflisar.kmpdevtools.core.Platform
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.readme.classes.ReadmeRegion
 
 object ReadmeDefaults {
 
@@ -54,22 +55,8 @@ object ReadmeDefaults {
         {{ supported_platforms }}
 
         ${headerSetup.markdownHeader()}
-
-        <details>
-
-        <summary>Dependencies</summary>
-
-        <br>
-
-        Simply add the dependencies inside your **build.gradle.kts** file.
-
-        ```kotlin
-        {{ setup-via-dependencies }}
-        ```
-
-        </details>
-
-        <details>
+        
+        <details open>
 
         <summary>Version Catalogue</summary>
 
@@ -83,8 +70,22 @@ object ReadmeDefaults {
 
         And then use the definitions in your projects **build.gradle.kts** file like following:
 
-        ```shell
+        ```java
         {{ setup-via-version-catalogue2 }}
+        ```
+
+        </details>
+
+        <details>
+
+        <summary>Dependencies</summary>
+
+        <br>
+
+        Simply add the dependencies inside your **build.gradle.kts** file.
+
+        ```kotlin
+        {{ setup-via-dependencies }}
         ```
 
         </details>
