@@ -12,7 +12,7 @@ Offers useful gradle functions to set up KMP modules as well as a script to gene
 
 Code:
 
-```
+```java
 // begin-snippet: MySnippetName
 My Snippet Code
 // end-snippet
