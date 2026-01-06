@@ -1,0 +1,40 @@
+name: kmp-devtools-on-tag (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        required: false
+        default: "COMMIT"
+    secrets:
+      GH_RELEASE_NOTES_TOKEN:
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    env:
+      # falls nicht gesetzt, nimmt die Action meist auch secrets.GITHUB_TOKEN,
+      # aber für Releases ist ein expliziter Token oft stabiler.
+      GITHUB_TOKEN: ${{ secrets.GH_RELEASE_NOTES_TOKEN || secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Build Changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          mode: ${{ inputs.mode }}
+          ignorePreReleases: true
+          configurationJson: |
+            {
+              "template": "#{{CHANGELOG}}",
+              "commit_template": "#{{BODY}}"
+            }
+
+      - name: Create/Update Release
+        uses: mikepenz/action-gh-release@v0.2.0-a03
+        with:
+          body: ${{ steps.changelog.outputs.changelog }}

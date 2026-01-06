@@ -1,0 +1,121 @@
+name: kmp-devtools-on-push (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      java:
+        type: string
+        required: false
+        default: "17"
+      update_docs_gradle_task:
+        type: string
+        required: false
+        default: "updateMarkdownFiles"
+      dokka_gradle_task:
+        type: string
+        required: false
+        default: ":library:dokka:dokkaGenerate"
+      dokka_html_path:
+        type: string
+        required: false
+        default: "library/dokka/build/dokka/html"
+      lychee_args:
+        type: string
+        required: false
+        default: >-
+          --root-dir "$(pwd)" --verbose --no-progress './**/*.md' './**/*.html'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java }}
+
+      - name: Grant Permission to Execute Gradle
+        run: chmod +x gradlew
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Run Gradle update task
+        run: ./gradlew ${{ inputs.update_docs_gradle_task }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Run MarkdownSnippets
+        run: |
+          dotnet tool install --global MarkdownSnippets.Tool
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+          mdsnippets --convention InPlaceOverwrite --omit-snippet-links true
+
+      - name: Check links with Lychee
+        uses: lycheeverse/lychee-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ inputs.lychee_args }}
+
+      - name: Remove lychee folder
+        run: rm -rf lychee
+
+      - name: Commit & push changes (if any)
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "update-docs: automated update [skip ci]"
+            git push
+          else
+            echo "No changes to commit."
+          fi
+
+  dokka-pages:
+    runs-on: ubuntu-latest
+    needs: update-docs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java }}
+
+      - name: Grant Permission to Execute Gradle
+        run: chmod +x gradlew
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Dokka HTML
+        run: ./gradlew ${{ inputs.dokka_gradle_task }}
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.dokka_html_path }}
+
+  deploy-pages:
+    runs-on: ubuntu-latest
+    needs: dokka-pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

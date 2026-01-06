@@ -1,0 +1,55 @@
+name: kmp-devtools-on-release (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      java:
+        type: string
+        required: false
+        default: "17"
+      publish_gradle_task:
+        type: string
+        required: false
+        default: "publish"
+      runs_on:
+        type: string
+        required: false
+        default: "macos-latest"
+    secrets:
+      GPG_KEY:
+        required: true
+      GPG_PASSWORD:
+        required: true
+      MAVEN_CENTRAL_USERNAME:
+        required: true
+      MAVEN_CENTRAL_PASSWORD:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ${{ inputs.runs_on }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java }}
+
+      - name: Grant Permission to Execute Gradle
+        run: chmod +x gradlew
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Publish
+        run: ./gradlew ${{ inputs.publish_gradle_task }} --no-daemon --no-parallel
+        env:
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSWORD }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
