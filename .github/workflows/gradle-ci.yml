@@ -1,0 +1,246 @@
+name: kmp-devtools (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      run_update_docs:
+        type: boolean
+        required: false
+        default: false
+      run_dokka_pages:
+        type: boolean
+        required: false
+        default: false
+      run_release_notes:
+        type: boolean
+        required: false
+        default: false
+      run_publish_maven_central:
+        type: boolean
+        required: false
+        default: false
+
+      # Common config
+      java:
+        type: string
+        required: false
+        default: "17"
+
+      # Update docs
+      update_docs_gradle_task:
+        type: string
+        required: false
+        default: "updateMarkdownFiles"
+      lychee_args:
+        type: string
+        required: false
+        default: >-
+          --root-dir "$(pwd)" --verbose --no-progress './**/*.md' './**/*.html'
+
+      # Dokka Pages
+      dokka_gradle_task:
+        type: string
+        required: false
+        default: ":library:dokka:dokkaGenerate"
+      dokka_html_path:
+        type: string
+        required: false
+        default: "library/dokka/build/dokka/html"
+
+      # Maven Central publish
+      publish_gradle_task:
+        type: string
+        required: false
+        default: "publish"
+      publish_runs_on:
+        type: string
+        required: false
+        default: "macos-latest"
+
+    secrets:
+      # For Update Release Notes
+      GH_RELEASE_NOTES_TOKEN:
+        required: false
+
+      # For Maven Central publish
+      GPG_KEY:
+        required: false
+      GPG_PASSWORD:
+        required: false
+      MAVEN_CENTRAL_USERNAME:
+        required: false
+      MAVEN_CENTRAL_PASSWORD:
+        required: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  update-docs:
+    name: Update markdown files
+    if: ${{ inputs.run_update_docs }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java }}
+
+      - name: Grant Permission to Execute Gradle
+        run: chmod +x gradlew
+
+      - name: Set up Gradle (with caching)
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Run Gradle update task
+        run: ./gradlew ${{ inputs.update_docs_gradle_task }}
+
+      - name: Setup .NET (for MarkdownSnippets.Tool)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Run MarkdownSnippets
+        run: |
+          dotnet tool install --global MarkdownSnippets.Tool
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+          mdsnippets --convention InPlaceOverwrite --omit-snippet-links true
+
+      - name: Check links with Lychee
+        uses: lycheeverse/lychee-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ inputs.lychee_args }}
+
+      - name: Remove lychee folder
+        run: rm -rf lychee
+
+      - name: Commit & push changes (if any)
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "update-docs: Automated markdown docs update [skip ci]"
+            git push
+          else
+            echo "No changes to commit."
+          fi
+
+  dokka:
+    name: Build Dokka
+    if: ${{ inputs.run_dokka_pages }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java }}
+
+      - name: Grant Permission to Execute Gradle
+        run: chmod +x gradlew
+
+      - name: Set up Gradle (with caching)
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Dokka HTML
+        run: ./gradlew ${{ inputs.dokka_gradle_task }}
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.dokka_html_path }}
+
+  deploy:
+    name: Deploy Dokka
+    if: ${{ inputs.run_dokka_pages }}
+    needs: dokka
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  release-notes:
+    name: Update Release Notes
+    if: ${{ inputs.run_release_notes }}
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GH_RELEASE_NOTES_TOKEN }}
+    steps:
+      - name: Build Changelog
+        id: github_release
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          mode: COMMIT
+          ignorePreReleases: true
+          configurationJson: |
+            {
+              "template": "#{{CHANGELOG}}",
+              "commit_template": "#{{BODY}}"
+            }
+
+      - name: Create Release
+        uses: mikepenz/action-gh-release@v0.2.0-a03
+        with:
+          body: ${{ steps.github_release.outputs.changelog }}
+
+  publish:
+    name: Publish to Maven Central
+    if: ${{ inputs.run_publish_maven_central }}
+    runs-on: ${{ inputs.publish_runs_on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java }}
+
+      - name: Grant Permission to Execute Gradle
+        run: chmod +x gradlew
+
+      - name: Set up Gradle (with caching)
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Publish Library
+        run: |
+          echo "Publishing library 🚀"
+          echo ""
+          ./gradlew ${{ inputs.publish_gradle_task }} --no-daemon --no-parallel
+          echo "Published✅"
+        env:
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSWORD }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
