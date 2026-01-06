@@ -89,11 +89,9 @@ data class LibraryConfig(
 
     @Serializable
     class Module(
-        val name: String,
         @SerialName("artifact-id") val artifactId: String,
         val description: String,
         val path: String,
-        @SerialName("exclude-from-docs") val excludeFromDocs: Boolean = false,
     ) {
         fun libraryDescription(setup: LibraryConfig): String {
             val library = setup.library.name

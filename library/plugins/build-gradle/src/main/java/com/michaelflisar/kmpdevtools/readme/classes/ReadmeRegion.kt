@@ -1,11 +1,12 @@
 package com.michaelflisar.kmpdevtools.readme.classes
 
 class ReadmeRegion(
-    val image: String,
-    val text: String
+    val image: String?,
+    val text: String,
 ) {
-    fun markdownHeader() = "# :$image: $text"
-    fun markdownLink() = ":$image: $text"
+    fun header() = if (image != null) ":$image: $text" else text
+    fun markdownHeader() = "# ${header()}"
+    fun markdownLink() = header()
         .lowercase()
         .replace(":", "")
         .replace(" ", "-")

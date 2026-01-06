@@ -11,7 +11,7 @@ object ReadmeDefaults {
     const val FOLDER_SCREENSHOTS = "screenshots"
     const val HAS_API_DOCS = true
 
-    val headerTableOfContent = ReadmeRegion("information_source", "Table of Contents")
+    val headerTableOfContent = ReadmeRegion(null, "Table of Contents")
     val headerScreenshots = ReadmeRegion("camera", "Screenshots")
     val headerSupportedPlatform = ReadmeRegion("computer", "Supported Platforms")
     val headerSetup = ReadmeRegion("wrench", "Setup")
@@ -20,7 +20,7 @@ object ReadmeDefaults {
     val headerDemo = ReadmeRegion("sparkles", "Demo")
     val headerMore = ReadmeRegion("information_source", "More")
     val headerOtherLibraries = ReadmeRegion("bulb", "Other Libraries")
-    val headerApiDocs = ReadmeRegion("books", "API Documentation")
+    val headerApiDocs = ReadmeRegion("books", "API")
 
     val allHeaders = listOf(
         headerTableOfContent,
@@ -58,7 +58,7 @@ object ReadmeDefaults {
         
         <details open>
 
-        <summary>Version Catalogue</summary>
+        <summary><b>Using Version Catalogs</b></summary>
 
         <br>
 
@@ -78,7 +78,7 @@ object ReadmeDefaults {
 
         <details>
 
-        <summary>Dependencies</summary>
+        <summary><b>Direct Dependency Notation</b></summary>
 
         <br>
 
@@ -115,6 +115,11 @@ object ReadmeDefaults {
         You can find more libraries (all multiplatform) of mine that all do work together nicely [here]({{ other-libraries }}).
 
     """.trimIndent()
+
+    val ImageSupportedPlatforms = UpdateReadmeUtil.markdownImage(
+        imageUrl = "https://img.shields.io/badge/PLATFORMS-black?style=for-the-badge",
+        altText = "Platforms"
+    )
 
     val ImageAndroid = UpdateReadmeUtil.markdownImage(
         imageUrl = "https://img.shields.io/badge/android-${Platform.ANDROID.color}?style=for-the-badge",

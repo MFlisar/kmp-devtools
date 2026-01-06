@@ -2,6 +2,8 @@ package com.michaelflisar.kmpdevtools.readme
 
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.readme.classes.CustomMarkdownFile
+import com.michaelflisar.kmpdevtools.readme.classes.FolderLink
 import com.michaelflisar.kmpdevtools.readme.classes.Partial
 import com.michaelflisar.kmpdevtools.readme.classes.Placeholder
 import java.io.File
@@ -26,7 +28,7 @@ object UpdateReadmeUtil {
         println("#####################################")
         println("")
 
-        val modules = libraryConfig.modules.filter { !it.excludeFromDocs }
+        val modules = libraryConfig.modules.filter { it.artifactId.isNotEmpty() }
 
         // files
         val fileAppVersionToml = File(rootDir, "gradle/app.versions.toml")
@@ -68,35 +70,35 @@ object UpdateReadmeUtil {
                 // extract name from first markdown header
                 val nameMatch = markdownTitleRegex.find(content)
                 val name = nameMatch?.groups?.get(1)?.value?.trim() ?: it.nameWithoutExtension
-                it to name
+                CustomMarkdownFile(it, name)
             }
 
-        // 2) get all modules and other markdown files as links
+        // 2) get all modules and other markdown files als hierarchische Links
         val moduleLinks = markdownFilesWithName
-            .filter { it.first.startsWith(folderDocumentationModules) }
+            .filter { it.startsWithIgnoreCase(folderDocumentationModules) }
             .map {
-                val relativePath = it.first.relativeTo(rootDir).path.replace("\\", "/")
-                val (path, name) = it
-                "- [$name]($relativePath)"
+                val relativePath = it.relativePathTo(rootDir)
+                "- [${it.name}]($relativePath)"
             }
-        val otherLinks = markdownFilesWithName
-            .filter { !it.first.startsWith(folderDocumentationModules) }
-            .map {
-                val relativePath = it.first.relativeTo(rootDir).path.replace("\\", "/")
-                val (path, name) = it
-                "- [$name]($relativePath)"
-            }
+        val otherLinks = buildMarkdownLinks(
+            buildFolderLinkHierarchy(
+                markdownFilesWithName.filter { !it.startsWithIgnoreCase(folderDocumentationModules) },
+                rootDir,
+                folderDocumentation
+            )
+        )
 
         // 3) create header replacement
         val imageMavenCentral = ReadmeDefaults.imageMavenCentral(libraryConfig)
         val imageAPI = ReadmeDefaults.imageAPI(minSdk)
         val imageKotlin = ReadmeDefaults.imageKotlin(config, libraryConfig)
         val imageKMP = ReadmeDefaults.imageKMP()
-        val imageLicence = ReadmeDefaults.imageLicence(config, libraryConfig)
+        //val imageLicence = ReadmeDefaults.imageLicence(config, libraryConfig)
 
-        val headerLine1 = "$imageMavenCentral $imageAPI $imageKotlin $imageKMP $imageLicence"
+        val headerLine1 = "$imageMavenCentral $imageAPI $imageKotlin $imageKMP"// $imageLicence"
         val headerLine2 = "# ${libraryConfig.library.name}"
         val headerLine3 = listOfNotNull(
+            ReadmeDefaults.ImageSupportedPlatforms,
             if (isAndroidSupported) ReadmeDefaults.ImageAndroid else null,
             if (isIosSupported) ReadmeDefaults.ImageIOS else null,
             if (isWindowsSupported) ReadmeDefaults.ImageWindows else null,
@@ -118,7 +120,7 @@ object UpdateReadmeUtil {
             appendLine("| " + header.joinToString(" | ") + " |")
             appendLine("|" + header.joinToString("|") { "---" } + "|")
             for ((module, platforms) in supportedPlatforms) {
-                val row = listOf(module.name) + allSupportedPlatformsLowercase.map { platform ->
+                val row = listOf(module.artifactId) + allSupportedPlatformsLowercase.map { platform ->
                     if (platforms.map { it.lowercase() }
                             .contains(platform.lowercase())) "✅" else "❌"
                 }
@@ -371,5 +373,64 @@ object UpdateReadmeUtil {
             }
 
         return platforms
+    }
+
+    fun buildMarkdownLinks(folders: List<FolderLink>): List<String> {
+        fun build(folderLinks: List<FolderLink>, indent: String = ""): List<String> {
+            return folderLinks.sortedBy { it.name }.flatMap { folder ->
+                val lines = mutableListOf<String>()
+                if (folder.link != null) {
+                    lines.add("$indent- ${folder.link}")
+                } else {
+                    lines.add("$indent- ${folder.name}")
+                }
+                if (folder.children.isNotEmpty()) {
+                    lines.addAll(build(folder.children, indent + "  "))
+                }
+                lines
+            }
+        }
+        return build(folders)
+    }
+
+    // Hilfsfunktion: Erzeugt die FolderLink-Hierarchie aus einer Liste von CustomMarkdownFile
+    private fun buildFolderLinkHierarchy(
+        customMarkdownFiles: List<CustomMarkdownFile>,
+        rootDir: File,
+        folderDocumentation: File,
+    ): List<FolderLink> {
+
+        // 1. Alle relativen Pfade zu den Markdown-Dateien bestimmen
+        val relPaths = customMarkdownFiles.map { it.relativePathTo(folderDocumentation) }
+
+        // 2. Hierarchie-Baum aufbauen
+        fun buildTree(paths: List<String>, parent: String = ""): List<FolderLink> {
+            val grouped = paths.groupBy {
+                val key = it.substringBefore("/", it)
+                key
+            }
+            return grouped.entries.sortedBy { it.key }.map { (key, group) ->
+                val children = group.filter { it.contains("/") }.map { it.substringAfter("/") }
+                val fullPath = if (parent.isEmpty()) key else "$parent/$key"
+                if (children.isNotEmpty()) {
+                    FolderLink(
+                        name = key,
+                        link = null,
+                        children = buildTree(children, fullPath)
+                    )
+                } else {
+                    val fileObj = customMarkdownFiles.find { it.file.relativeTo(folderDocumentation).invariantSeparatorsPath == fullPath }
+                    FolderLink(
+                        name = key,
+                        link = fileObj?.let {
+                            val rel = it.file.relativeTo(rootDir).invariantSeparatorsPath
+                            "[${it.name}]($rel)"
+                        },
+                        children = emptyList()
+                    )
+                }
+            }
+        }
+        return buildTree(relPaths)
     }
 }

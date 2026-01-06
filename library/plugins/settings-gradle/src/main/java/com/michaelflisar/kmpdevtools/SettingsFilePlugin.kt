@@ -1,5 +1,7 @@
 package com.michaelflisar.kmpdevtools
 
+import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.core.utils.ModuleUtil
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
 import java.io.File
@@ -17,6 +19,29 @@ class SettingsFilePlugin : Plugin<Settings> {
             return null
         }
         return settings.providers.gradleProperty(property).get().toBoolean()
+    }
+
+    fun includeModules(libraryId: String, libraryConfig: LibraryConfig, libraryFolder: String = "library") {
+        val allPaths = libraryConfig.modules.map { it.path }.distinct()
+        val foldersInPaths = allPaths.map { it.substringBeforeLast("/", "") }.distinct()
+
+        // include all folders first
+        foldersInPaths.forEach {
+            val name = ModuleUtil.folderToModuleName(it, libraryId, libraryFolder)
+            settings.include(name)
+            settings.project(name).projectDir = File(settings.rootDir, it)
+        }
+
+        // then include all modules
+        println()
+        println("Including modules - libraryId = '$libraryId'")
+        libraryConfig.modules.forEach {
+            val name = ModuleUtil.folderToModuleName(it.path, libraryId, libraryFolder)
+            settings.include(name)
+            settings.project(name).projectDir = File(settings.rootDir, it.path)
+            println("- $name => ${it.path}")
+        }
+        println()
     }
 
     /**
