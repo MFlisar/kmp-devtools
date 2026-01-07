@@ -55,6 +55,7 @@ class BuildFilePlugin : Plugin<Project> {
             project.tasks.register("updateMarkdownFiles", UpdateMarkdownFilesTask::class.java)
             project.tasks.register("macActions", MacActionsTask::class.java)
             project.tasks.register("renameProject", RenameProjectTask::class.java)
+            project.tasks.register("updateDevToolsVersion", UpdateDevToolsVersionTask::class.java)
         }
     }
 }
@@ -149,5 +150,13 @@ abstract class RenameProjectTask : ConfigDependentTask() {
         val libraryConfig = LibraryConfig.readFromProject(rootDirectory.get().asFile)
         val data = ProjectData(rootDirectory.get().asFile, libraryConfig)
         ProjectActions.runProjectRenamer(data)
+    }
+}
+
+abstract class UpdateDevToolsVersionTask : ConfigDependentTask() {
+
+    @TaskAction
+    fun run() {
+        ProjectActions.updateDevToolsVersion(rootDirectory.get().asFile)
     }
 }

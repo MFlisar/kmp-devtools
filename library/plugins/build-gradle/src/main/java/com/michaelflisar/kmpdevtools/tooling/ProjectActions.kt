@@ -62,4 +62,90 @@ object ProjectActions {
             }
         )
     }
+
+    fun updateDevToolsVersion(
+        root: File,
+    ) {
+        // user input holen
+        println("Neue kmp-devtools version: ")
+        val newVersion = readLine()?.trim().orEmpty()
+        if (newVersion.isEmpty()) {
+            println("Aborted: No version provided.")
+            return
+        }
+
+        fun replaceInFile(file: File, regex: Regex, replacement: String) {
+            val text = file.readText()
+            val newText = text.replace(regex, replacement)
+            if (text != newText) {
+                file.writeText(newText)
+                println("Updated: ${file.path}")
+            }
+        }
+
+        val devInfosText = """
+            # Snippets
+
+            ```java
+            // begin-snippet: MySnippetName
+            ... CODE ...
+            // end-snippet
+            ```
+
+            Markdown:
+
+            ```
+            snippet: MySnippetName
+            ```
+
+            # Gradle Tasks
+
+            * `updateMarkdownFiles`
+            * `macActions`
+            * `renameProject`
+            * `updateDevToolsVersion`
+        """.trimIndent()
+
+        // 1) gradle/deps.versions.toml => kmpdevtools = "6.4.1" ersetzen
+        val depsFile = File(root, "gradle/deps.versions.toml")
+        val depsText = depsFile.readText()
+        val depsRegex = Regex("""(kmpdevtools\s*=\s*)".*?"""")
+        val depsNewText = depsRegex.replace(depsText) { matchResult ->
+            val prefix = matchResult.groupValues[1]
+            "${prefix}\"$newVersion\""
+        }
+        if (depsText != depsNewText) {
+            depsFile.writeText(depsNewText)
+            println("Updated: ${depsFile.path}")
+        }
+
+        // 2) settings.gradle.kts => id("io.github.mflisar.kmpdevtools.plugins-settings-gradle") version "6.4.1" ersetzen
+        val settingsFile = File(root, "settings.gradle.kts")
+        replaceInFile(
+            file = settingsFile,
+            regex = Regex("""id\("io\.github\.mflisar\.kmpdevtools\.plugins-settings-gradle"\)\s*version\s*".*?""""),
+            replacement = """id("io.github.mflisar.kmpdevtools.plugins-settings-gradle") version "$newVersion""""
+        )
+
+        // 3) in .github/workflows/*.yml uses: MFlisar/kmp-devtools/.github/workflows/kmp-devtools-*.yml@6.4.1 ersetzen
+        val workflowsDir = File(root, ".github/workflows")
+        workflowsDir.listFiles { f -> f.extension == "yml" }?.forEach { ymlFile ->
+            val text = ymlFile.readText()
+            val regex = Regex("""uses:\s*MFlisar/kmp-devtools/.github/workflows/(kmp-devtools-[\w\-]+\.yml)@(\d+\.\d+\.\d+)""")
+            val newText = regex.replace(text) { matchResult ->
+                val fileName = matchResult.groupValues[1]
+                "uses: MFlisar/kmp-devtools/.github/workflows/$fileName@$newVersion"
+            }
+            if (text != newText) {
+                ymlFile.writeText(newText)
+                println("Updated: ${ymlFile.path}")
+            }
+        }
+
+        // 4) congis/dev-infos.txt updaten
+        val devInfosFile = File(root, "configs/dev-infos.txt")
+        if (devInfosFile.exists())
+            devInfosFile.delete()
+        devInfosFile.writeText(devInfosText)
+    }
 }
