@@ -14,11 +14,11 @@ on:
       dokka_gradle_task:
         type: string
         required: false
-        default: ":library:dokka:dokkaGenerate"
+        default: ":dokka:dokkaGenerate"
       dokka_html_path:
         type: string
         required: false
-        default: "library/dokka/build/dokka/html"
+        default: "dokka/build/dokka/html"
       lychee_args:
         type: string
         required: false
