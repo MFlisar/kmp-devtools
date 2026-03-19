@@ -1,7 +1,6 @@
 package com.michaelflisar.kmpdevtools
 
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
-import com.android.build.api.dsl.androidLibrary
 import com.michaelflisar.kmpdevtools.config.AppModuleData
 import com.michaelflisar.kmpdevtools.config.LibraryModuleData
 import com.michaelflisar.kmpdevtools.config.sub.AndroidLibraryConfig
@@ -132,7 +131,8 @@ class Targets(
      *
      * @param project The Gradle project to configure.
      * @param config The configuration to use for the Android target.
-     * @param publishLibraryVariantsNames The names of the library variants to publish. Default is ["release"].
+     * @param libraryConfig The library configuration to use for the Android target.
+     * @param androidConfig The Android-specific configuration to use for the Android target.
      * @param configure A lambda to configure the Android target.
      */
     fun setupAndroidLibraryTarget(
@@ -144,21 +144,20 @@ class Targets(
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
             if (android) {
-
-                androidLibrary {
-
-                    namespace = libraryConfig.library.namespace
-                    compileSdk = androidConfig.compileSdk.get().toInt()
-                    minSdk = androidConfig.minSdk.get().toInt()
-
-                    compilerOptions {
-                        jvmTarget.set(JvmTarget.fromTarget(config.javaVersion))
-                    }
-
-                    androidResources { enable = androidConfig.enableAndroidResources }
-
-                    configure()
-                }
+                // TODO: geht dzt. nicht!
+                //android {
+                //    namespace = libraryConfig.library.namespace
+                //    compileSdk = androidConfig.compileSdk.get().toInt()
+                //    minSdk = androidConfig.minSdk.get().toInt()
+//
+                //    compilerOptions {
+                //        jvmTarget.set(JvmTarget.fromTarget(config.javaVersion))
+                //    }
+//
+                //    androidResources { enable = androidConfig.enableAndroidResources }
+//
+                //    configure()
+                //}
             }
         }
     }

@@ -46,6 +46,8 @@ dependencies {
     implementation(libs.gradle.maven.publish.plugin)
     implementation(libs.kotlin.gradle.plugin)
     implementation(libs.android.build.tools)
+    implementation(libs.kotlin.multiplatform)
+    implementation(libs.android.library)
     implementation(libs.compose)
     implementation(libs.kotlin.compose)
     implementation(libs.launch4j)
