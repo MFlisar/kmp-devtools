@@ -28,6 +28,9 @@ on:
 permissions:
   contents: read
 
+env:
+  TAG: ${{ github.event.release.tag_name }}
+
 jobs:
   publish:
     runs-on: ${{ inputs.runs_on }}
