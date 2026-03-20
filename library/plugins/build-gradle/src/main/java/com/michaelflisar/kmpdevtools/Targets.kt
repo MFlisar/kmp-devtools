@@ -1,20 +1,23 @@
 package com.michaelflisar.kmpdevtools
 
+import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.api.dsl.BuildFeatures
+import com.android.build.api.dsl.DefaultConfig
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
-import com.michaelflisar.kmpdevtools.config.AppModuleData
-import com.michaelflisar.kmpdevtools.config.LibraryModuleData
-import com.michaelflisar.kmpdevtools.config.sub.AndroidLibraryConfig
-import com.michaelflisar.kmpdevtools.config.sub.WasmAppConfig
+import com.michaelflisar.kmpdevtools.configs.app.AndroidAppConfig
+import com.michaelflisar.kmpdevtools.configs.library.AndroidLibraryConfig
+import com.michaelflisar.kmpdevtools.configs.app.WasmAppConfig
 import com.michaelflisar.kmpdevtools.core.Platform
+import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import org.gradle.api.JavaVersion
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinAndroidTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithHostTests
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithSimulatorTests
@@ -73,8 +76,8 @@ class Targets(
     }
 
     fun setupTargetsLibrary(
-        libraryModuleData: LibraryModuleData,
-        configureAndroid: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit) = {},
+        project: Project,
+        //configureAndroid: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit) = {},
         configureIOS: (KotlinNativeTarget.() -> Unit) = {},
         configureIOSTests: (KotlinNativeTargetWithSimulatorTests.() -> Unit) = {},
         configureWindows: (KotlinJvmTarget.() -> Unit) = {},
@@ -83,28 +86,46 @@ class Targets(
         configureWASM: (KotlinWasmJsTargetDsl.() -> Unit) = {},
         configureJS: (KotlinJsTargetDsl.() -> Unit) = {},
     ) {
-        if (libraryModuleData.androidConfig == null && android) {
-            throw IllegalArgumentException("androidConfig must be provided when Android target is enabled")
-        }
-        if (libraryModuleData.androidConfig != null)
-            setupAndroidLibraryTarget(
-                libraryModuleData.project,
-                libraryModuleData.config,
-                libraryModuleData.libraryConfig,
-                libraryModuleData.androidConfig,
-                configureAndroid
-            )
-        setupIOSTarget(libraryModuleData.project, configureIOS, configureIOSTests)
-        setupWindowsTarget(libraryModuleData.project, configureWindows)
-        setupMacOSTarget(libraryModuleData.project, configureMacOS)
-        setupLinuxTarget(libraryModuleData.project, configureLinux)
-        setupWasmLibraryTarget(libraryModuleData.project, configureWASM)
-        setupJSTarget(libraryModuleData.project, configureJS)
+        //if (libraryModuleData.androidConfig == null && android) {
+        //    throw IllegalArgumentException("androidConfig must be provided when Android target is enabled")
+        //}
+        //if (libraryModuleData.androidConfig != null)
+        //    setupAndroidLibraryTarget(
+        //        libraryModuleData.project,
+        //        libraryModuleData.config,
+        //        libraryModuleData.libraryConfig,
+        //        libraryModuleData.androidConfig,
+        //        configureAndroid
+        //    )
+        setupIOSTarget(project, configureIOS, configureIOSTests)
+        setupWindowsTarget(project, configureWindows)
+        setupMacOSTarget(project, configureMacOS)
+        setupLinuxTarget(project, configureLinux)
+        setupWasmLibraryTarget(project, configureWASM)
+        setupJSTarget(project, configureJS)
+    }
+
+    fun setupTargetsAndroidLibrary(
+        project: Project,
+        config: Config,
+        libraryConfig: LibraryConfig,
+        androidConfig: AndroidLibraryConfig,
+        androidTarget: KotlinMultiplatformAndroidLibraryTarget
+    ) {
+        setupAndroidLibraryTarget(
+            androidTarget,
+            project,
+            config,
+            libraryConfig,
+            androidConfig,
+            {}//configureAndroid
+        )
     }
 
     fun setupTargetsApp(
-        appModuleData: AppModuleData,
-        configureAndroid: (KotlinAndroidTarget.() -> Unit) = {},
+        project: Project,
+        //configureAndroid: (KotlinAndroidTarget.() -> Unit) = {},
+        wasmAppConfig: WasmAppConfig? = null,
         configureIOS: (KotlinNativeTarget.() -> Unit) = {},
         configureIOSTests: (KotlinNativeTargetWithSimulatorTests.() -> Unit) = {},
         configureWindows: (KotlinJvmTarget.() -> Unit) = {},
@@ -113,17 +134,17 @@ class Targets(
         configureWASM: (KotlinWasmJsTargetDsl.() -> Unit) = {},
         configureJS: (KotlinJsTargetDsl.() -> Unit) = {},
     ) {
-        if (appModuleData.wasmConfig == null && wasm) {
+        if (wasmAppConfig == null && wasm) {
             throw IllegalArgumentException("wasmConfig must be provided when Wasm target is enabled")
         }
-        setupAndroidAppTarget(appModuleData.project, appModuleData.config, configureAndroid)
-        setupIOSTarget(appModuleData.project, configureIOS, configureIOSTests)
-        setupWindowsTarget(appModuleData.project, configureWindows)
-        setupMacOSTarget(appModuleData.project, configureMacOS)
-        setupLinuxTarget(appModuleData.project, configureLinux)
-        if (appModuleData.wasmConfig != null)
-            setupWasmAppTarget(appModuleData.project, appModuleData.wasmConfig, configureWASM)
-        setupJSTarget(appModuleData.project, configureJS)
+        //setupAndroidAppTarget(appModuleData.project, appModuleData.config, configureAndroid)
+        setupIOSTarget(project, configureIOS, configureIOSTests)
+        setupWindowsTarget(project, configureWindows)
+        setupMacOSTarget(project, configureMacOS)
+        setupLinuxTarget(project, configureLinux)
+        if (wasmAppConfig != null)
+            setupWasmAppTarget(project, wasmAppConfig, configureWASM)
+        setupJSTarget(project, configureJS)
     }
 
     /**
@@ -135,28 +156,33 @@ class Targets(
      * @param androidConfig The Android-specific configuration to use for the Android target.
      * @param configure A lambda to configure the Android target.
      */
-    fun setupAndroidLibraryTarget(
+    private fun setupAndroidLibraryTarget(
+        target: KotlinMultiplatformAndroidLibraryTarget,
         project: Project,
         config: Config,
         libraryConfig: LibraryConfig,
         androidConfig: AndroidLibraryConfig,
         configure: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit) = {},
     ) {
-        project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (android) {
-                // TODO: geht dzt. nicht!
+        if (android) {
+
+            project.extensions.configure(KotlinMultiplatformExtension::class.java) {
+
+                with (target) {
+                    namespace = libraryConfig.library.namespace + "." + androidConfig.namespaceAddon
+                    compileSdk = androidConfig.compileSdk.get().toInt()
+                    minSdk = androidConfig.minSdk.get().toInt()
+
+                    compilerOptions {
+                        jvmTarget.set(JvmTarget.fromTarget(config.javaVersion))
+                    }
+
+                    androidResources { enable = androidConfig.enableAndroidResources }
+
+                    configure()
+                }
+
                 //android {
-                //    namespace = libraryConfig.library.namespace
-                //    compileSdk = androidConfig.compileSdk.get().toInt()
-                //    minSdk = androidConfig.minSdk.get().toInt()
-//
-                //    compilerOptions {
-                //        jvmTarget.set(JvmTarget.fromTarget(config.javaVersion))
-                //    }
-//
-                //    androidResources { enable = androidConfig.enableAndroidResources }
-//
-                //    configure()
                 //}
             }
         }
@@ -167,21 +193,49 @@ class Targets(
      *
      * @param project The Gradle project to configure.
      * @param config The configuration to use for the Android target.
+     * @param appConfig The app configuration to use for the Android target.
      * @param configure A lambda to configure the Android target.
      */
-    fun setupAndroidAppTarget(
+    private fun setupAndroidAppTarget(
+        extension: ApplicationExtension,
         project: Project,
         config: Config,
-        configure: (KotlinAndroidTarget.() -> Unit) = {},
+        androidAppConfig: AndroidAppConfig,
+        appConfig: AppConfig,
+        compose: Boolean = true,
+        configureDefault: (DefaultConfig.() -> Unit) = {},
+        configureBuildFeature: (BuildFeatures.() -> Unit) = {},
+        configure: (ApplicationExtension.() -> Unit) = {},
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
             if (android) {
-                androidTarget {
-                    compilerOptions {
-                        jvmTarget.set(JvmTarget.fromTarget(config.javaVersion))
+                with (extension)
+                {
+                    namespace = appConfig.packageName
+                    compileSdk = androidAppConfig.compileSdk.get().toInt()
+
+                    defaultConfig {
+                        applicationId = appConfig.androidAppId
+                        minSdk = androidAppConfig.minSdk.get().toInt()
+                        targetSdk = androidAppConfig.targetSdk.get().toInt()
+                        versionCode = appConfig.versionCode
+                        versionName = appConfig.versionName
+                        configureDefault()
                     }
+
+                    compileOptions {
+                        sourceCompatibility = JavaVersion.toVersion(config.javaVersion)
+                        targetCompatibility = JavaVersion.toVersion(config.javaVersion)
+                    }
+
+                    buildFeatures {
+                        this.compose = compose
+                        configureBuildFeature()
+                    }
+
                     configure()
                 }
+
             }
         }
     }
@@ -193,7 +247,7 @@ class Targets(
      * @param configure A lambda to configure each iOS target.
      * @param configureTests A lambda to configure simulator tests for applicable iOS targets.
      */
-    fun setupIOSTarget(
+    private fun setupIOSTarget(
         project: Project,
         configure: (KotlinNativeTarget.() -> Unit),
         configureTests: (KotlinNativeTargetWithSimulatorTests.() -> Unit),
@@ -275,7 +329,7 @@ class Targets(
      * @param project The Gradle project to configure.
      * @param configure A lambda to configure the Windows (JVM) target.
      */
-    fun setupWindowsTarget(
+    private fun setupWindowsTarget(
         project: Project,
         configure: (KotlinJvmTarget.() -> Unit),
     ) {
@@ -294,7 +348,7 @@ class Targets(
      * @param project The Gradle project to configure.
      * @param configure A lambda to configure each macOS target.
      */
-    fun setupMacOSTarget(
+    private fun setupMacOSTarget(
         project: Project,
         configure: (KotlinNativeTargetWithHostTests.() -> Unit),
     ) {
@@ -316,7 +370,7 @@ class Targets(
      * @param project The Gradle project to configure.
      * @param configure A lambda to configure each Linux target.
      */
-    fun setupLinuxTarget(
+    private fun setupLinuxTarget(
         project: Project,
         configure: (KotlinNativeTarget.() -> Unit),
     ) {
@@ -371,7 +425,7 @@ class Targets(
         }
     }
 
-    fun setupWasmLibraryTarget(
+    private fun setupWasmLibraryTarget(
         project: Project,
         configure: (KotlinWasmJsTargetDsl.() -> Unit),
     ) {
@@ -392,7 +446,7 @@ class Targets(
      * @param project The Gradle project to configure.
      * @param configure A lambda to configure each JS target.
      */
-    fun setupJSTarget(
+    private fun setupJSTarget(
         project: Project,
         configure: (KotlinJsTargetDsl.() -> Unit),
     ) {

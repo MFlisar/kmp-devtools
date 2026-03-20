@@ -1,11 +1,13 @@
 package com.michaelflisar.kmpdevtools
 
 import com.android.build.api.dsl.ApplicationExtension
-import com.android.build.gradle.LibraryExtension
+import com.android.build.api.dsl.LibraryExtension
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
-import com.michaelflisar.kmpdevtools.config.AppModuleData
-import com.michaelflisar.kmpdevtools.config.LibraryModuleData
+import com.michaelflisar.kmpdevtools.configs.app.AndroidAppConfig
+import com.michaelflisar.kmpdevtools.configs.app.DesktopAppConfig
+import com.michaelflisar.kmpdevtools.configs.library.AndroidLibraryConfig
+import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
@@ -112,14 +114,16 @@ object BuildFileUtil {
     }
 
     fun setupAndroidLibrary(
-        libraryModuleData: LibraryModuleData,
+        project: Project,
+        config: Config,
+        libraryConfig: LibraryConfig,
+        androidConfig: AndroidLibraryConfig,
         buildConfig: Boolean,
     ) {
-        val androidConfig = libraryModuleData.androidConfig ?: throw IllegalArgumentException("androidConfig must be provided for Android library modules")
-        val module = libraryModuleData.libraryConfig.getModuleForProject(libraryModuleData.project.rootDir, libraryModuleData.project.projectDir)
-        libraryModuleData.project.extensions.configure(LibraryExtension::class.java) {
+        val module = libraryConfig.getModuleForProject(project.rootDir, project.projectDir)
+        project.extensions.configure(LibraryExtension::class.java) {
 
-            namespace = module.androidNamespace(libraryModuleData.libraryConfig)
+            namespace = module.androidNamespace(libraryConfig)
 
             this.compileSdk = androidConfig.compileSdk.get().toInt()
 
@@ -132,56 +136,58 @@ object BuildFileUtil {
             }
 
             compileOptions {
-                sourceCompatibility = JavaVersion.toVersion(libraryModuleData.config.javaVersion)
-                targetCompatibility = JavaVersion.toVersion(libraryModuleData.config.javaVersion)
+                sourceCompatibility = JavaVersion.toVersion(config.javaVersion)
+                targetCompatibility = JavaVersion.toVersion(config.javaVersion)
             }
         }
     }
 
     fun setupAndroidApp(
-        appModuleData: AppModuleData,
-        buildConfig: Boolean,
+        project: Project,
+        config: Config,
+        appConfig: AppConfig,
+        androidAppConfig: AndroidAppConfig,
         generateResAppName: Boolean,
+        buildConfig: Boolean,
         checkDebugKeyStoreProperty: Boolean,
         setupBuildTypesDebugAndRelease: Boolean,
         buildTypeDebugSuffix : String = ".debug",
     ) {
-        appModuleData.project.extensions.configure(ApplicationExtension::class.java) {
+        project.extensions.configure(ApplicationExtension::class.java) {
 
-            namespace = appModuleData.namespace
+            namespace = appConfig.androidNamespace
 
-            val androidAppSetup = appModuleData.androidConfig
-                ?: throw IllegalArgumentException("androidConfig must be provided for Android application modules")
-
-            this.compileSdk = androidAppSetup.compileSdk.get().toInt()
+            this.compileSdk = androidAppConfig.compileSdk.get().toInt()
 
             buildFeatures {
+                resValues = true // needed for app name as string resource
                 this.buildConfig = buildConfig
             }
 
             defaultConfig {
-                this.minSdk = androidAppSetup.minSdk.get().toInt()
-                this.targetSdk = androidAppSetup.targetSdk.get().toInt()
-                this.versionCode = appModuleData.versionCode
-                this.versionName = appModuleData.versionName
+
+                this.minSdk = androidAppConfig.minSdk.get().toInt()
+                this.targetSdk = androidAppConfig.targetSdk.get().toInt()
+                this.versionCode = appConfig.versionCode
+                this.versionName = appConfig.versionName
 
                 if (generateResAppName) {
                     resValue(
                         type = "string",
-                        name = androidAppSetup.stringResourceIdForAppName,
-                        value = appModuleData.appName
+                        name = androidAppConfig.stringResourceIdForAppName,
+                        value = appConfig.appName
                     )
                 }
             }
 
             compileOptions {
-                sourceCompatibility = JavaVersion.toVersion(appModuleData.config.javaVersion)
-                targetCompatibility = JavaVersion.toVersion(appModuleData.config.javaVersion)
+                sourceCompatibility = JavaVersion.toVersion(config.javaVersion)
+                targetCompatibility = JavaVersion.toVersion(config.javaVersion)
             }
 
             // eventually use local custom signing
             if (checkDebugKeyStoreProperty) {
-                val debugKeyStore = appModuleData.project.providers.gradleProperty("debugKeyStore").orNull
+                val debugKeyStore = project.providers.gradleProperty("debugKeyStore").orNull
                 if (debugKeyStore != null) {
                     signingConfigs {
                         getByName("debug") {
@@ -212,17 +218,18 @@ object BuildFileUtil {
     }
 
     fun setupWindowsApp(
+        project: Project,
+        config: Config,
         application: JvmApplication,
-        appModuleData: AppModuleData,
+        appConfig: AppConfig,
+        desktopAppConfig: DesktopAppConfig,
         configureNativeDistribution: JvmApplicationDistributions.() -> Unit = {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
         },
     ) {
         with(application) {
-            val setup =
-                appModuleData.desktopConfig ?: throw Exception("desktopConfig must be provided for Desktop application modules")
 
-            this.mainClass = setup.mainClass
+            this.mainClass = desktopAppConfig.mainClass
 
             nativeDistributions {
 
@@ -231,18 +238,18 @@ object BuildFileUtil {
                 val now = LocalDateTime.now()
                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-                packageName = appModuleData.appName // entspricht dem exe Name
-                packageVersion = appModuleData.versionName
-                description = "${appModuleData.appName} - Build at ${now.format(formatter)}"
-                copyright = "©${now.year} ${appModuleData.config.developer.name}. All rights reserved."
-                vendor = appModuleData.config.developer.name
+                packageName = appConfig.appName // entspricht dem exe Name
+                packageVersion = appConfig.versionName
+                description = "${appConfig.appName} - Build at ${now.format(formatter)}"
+                copyright = "©${now.year} ${config.developer.name}. All rights reserved."
+                vendor = config.developer.name
 
                 // https://github.com/JetBrains/compose-multiplatform/issues/1154
                 // => suggestRuntimeModules task ausführen um zu prüfen, was man hier hinzufügen sollte
                 // modules("java.instrument", "java.security.jgss", "java.sql", "java.xml.crypto", "jdk.unsupported")
 
                 windows {
-                    iconFile.set(appModuleData.project.file(setup.ico))
+                    iconFile.set(project.file(desktopAppConfig.ico))
                     //includeAllModules = true
                 }
             }
@@ -250,29 +257,30 @@ object BuildFileUtil {
     }
 
     fun setupLaunch4J(
+        project: Project,
+        config: Config,
         task: Launch4jLibraryTask,
-        appModuleData: AppModuleData,
+        appConfig: AppConfig,
+        desktopAppConfig: DesktopAppConfig,
         jarTask: String = "flattenReleaseJars",
         outputFile: (exe: File) -> File = { it },
     ) {
         with(task) {
-            val setup =
-                appModuleData.desktopConfig ?: throw Exception("desktopConfig must be provided for Desktop application modules")
 
-            mainClassName.set(setup.mainClass)
-            icon.set(project.file(setup.ico).absolutePath)
+            mainClassName.set(desktopAppConfig.mainClass)
+            icon.set(project.file(desktopAppConfig.ico).absolutePath)
             setJarTask(project.tasks.getByName(jarTask))
-            outfile.set("${appModuleData.appName}.exe")
+            outfile.set("${appConfig.appName}.exe")
 
             val now = LocalDateTime.now()
             val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-            productName.set(appModuleData.appName)
-            version.set(appModuleData.versionName)
-            textVersion.set(appModuleData.versionName)
-            description = "${appModuleData.appName} - Build at ${now.format(formatter)}"
-            copyright.set("©${now.year} ${appModuleData.config.developer.name}. All rights reserved.")
-            companyName.set(appModuleData.config.developer.name)
+            productName.set(appConfig.appName)
+            version.set(appConfig.versionName)
+            textVersion.set(appConfig.versionName)
+            description = "${appConfig.appName} - Build at ${now.format(formatter)}"
+            copyright.set("©${now.year} ${config.developer.name}. All rights reserved.")
+            companyName.set(config.developer.name)
 
             doLast {
 

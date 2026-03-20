@@ -14,7 +14,6 @@ android-application = 			    { id = "com.android.application", 	                
 android-library = 			        { id = "com.android.kotlin.multiplatform.library", 	version.ref = "gradle" }
 
 # kotlin
-#kotlin-android = 				    { id = "org.jetbrains.kotlin.android", 			    version.ref = "kotlin" }
 kotlin-parcelize =                  { id = "org.jetbrains.kotlin.plugin.parcelize",     version.ref = "kotlin"  }
 kotlin-multiplatform = 			    { id = "org.jetbrains.kotlin.multiplatform", 	    version.ref = "kotlin" }
 kotlin-compose = 				    { id = "org.jetbrains.kotlin.plugin.compose", 	    version.ref = "kotlin" }
@@ -30,7 +29,6 @@ gradle-maven-publish-plugin =       { id = "com.vanniktech.maven.publish.base", 
 # for build-logic only
 kotlin-gradle-plugin =              { module = "org.jetbrains.kotlin:kotlin-gradle-plugin",                 version.ref = "kotlin" }
 kotlin-compose =                    { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin",       version.ref = "kotlin" }
-kotlin-multiplatform =              { module = "org.jetbrains.kotlin.multiplatform:org.jetbrains.kotlin.multiplatform.gradle.plugin",version.ref = "kotlin" }
 android-build-tools =               { module = "com.android.tools.build:gradle",                            version.ref = "gradle" }
 android-library =                   { module = "com.android.kotlin.multiplatform.library:com.android.kotlin.multiplatform.library.gradle.plugin", version.ref = "gradle" }
 gradle-maven-publish-plugin =       { module = "com.vanniktech:gradle-maven-publish-plugin",                version.ref = "gradle-maven-publish-plugin" }

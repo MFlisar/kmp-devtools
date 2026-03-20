@@ -7,6 +7,7 @@ Offers useful gradle functions to set up KMP modules as well as a script to gene
 * `updateMarkdownFiles`
 * `macActions`
 * `renameProject`
+* `updateDevToolsVersion`
 
 # Documentation
 

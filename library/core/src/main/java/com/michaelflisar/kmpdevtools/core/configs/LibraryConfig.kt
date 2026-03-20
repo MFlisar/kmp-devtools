@@ -48,6 +48,8 @@ data class LibraryConfig(
         }
     }
 
+    fun libraryId() = library.name.lowercase()
+
     fun getModuleForProject(rootDir: File, projectDir: File): Module {
         val path = projectDir.relativeTo(rootDir).path
         return getModuleByPath(path)

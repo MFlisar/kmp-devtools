@@ -83,29 +83,6 @@ object ProjectActions {
             }
         }
 
-        val devInfosText = """
-            # Snippets
-
-            ```java
-            // begin-snippet: MySnippetName
-            ... CODE ...
-            // end-snippet
-            ```
-
-            Markdown:
-
-            ```
-            snippet: MySnippetName
-            ```
-
-            # Gradle Tasks
-
-            * `updateMarkdownFiles`
-            * `macActions`
-            * `renameProject`
-            * `updateDevToolsVersion`
-        """.trimIndent()
-
         // 1) gradle/deps.versions.toml => kmpdevtools = "6.4.1" ersetzen
         val depsFile = File(root, "gradle/deps.versions.toml")
         val depsText = depsFile.readText()
@@ -141,11 +118,5 @@ object ProjectActions {
                 println("Updated: ${ymlFile.path}")
             }
         }
-
-        // 4) congis/dev-infos.txt updaten
-        val devInfosFile = File(root, "configs/dev-infos.txt")
-        if (devInfosFile.exists())
-            devInfosFile.delete()
-        devInfosFile.writeText(devInfosText)
     }
 }
