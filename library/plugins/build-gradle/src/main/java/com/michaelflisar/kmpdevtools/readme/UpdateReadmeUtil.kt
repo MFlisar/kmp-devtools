@@ -7,6 +7,8 @@ import com.michaelflisar.kmpdevtools.readme.classes.FolderLink
 import com.michaelflisar.kmpdevtools.readme.classes.Partial
 import com.michaelflisar.kmpdevtools.readme.classes.Placeholder
 import java.io.File
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 object UpdateReadmeUtil {
 
@@ -78,7 +80,8 @@ object UpdateReadmeUtil {
             .filter { it.startsWithIgnoreCase(folderDocumentationModules) }
             .map {
                 val relativePath = it.relativePathTo(rootDir)
-                "- [${it.name}]($relativePath)"
+                val encodedRelativePath = URLEncoder.encode(relativePath, StandardCharsets.UTF_8.toString())
+                "- [${it.name}]($encodedRelativePath)"
             }
         val otherLinks = buildMarkdownLinks(
             buildFolderLinkHierarchy(
@@ -422,7 +425,8 @@ object UpdateReadmeUtil {
                         name = key,
                         link = fileObj?.let {
                             val rel = it.file.relativeTo(rootDir).invariantSeparatorsPath
-                            "[${it.name}]($rel)"
+                            val encodedRelativePath = URLEncoder.encode(rel, StandardCharsets.UTF_8.toString())
+                            "[${it.name}]($encodedRelativePath)"
                         },
                         children = emptyList()
                     )
