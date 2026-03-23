@@ -164,10 +164,14 @@ object UpdateReadmeUtil {
 
         // 6) create screenshot replacement
         val screenshots = if (folderDocumentationScreenshots.exists()) {
-            folderDocumentationScreenshots.listFiles().map {
-                val relativePath = it.relativeTo(rootDir).path.replace("\\", "/")
-                "![${it.nameWithoutExtension}]($relativePath)"
-            }
+            folderDocumentationScreenshots
+                .walkTopDown()
+                .filter { it.isFile }
+                .toList()
+                .map {
+                    val relativePath = it.relativeTo(rootDir).path.replace("\\", "/")
+                    "![${it.nameWithoutExtension}]($relativePath)"
+                }
         } else {
             emptyList()
         }
