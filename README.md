@@ -24,3 +24,6 @@ Markdown:
 ```
 snippet: MySnippetName
 ```
+
+* [Icons/Emojis](https://gist.github.com/rxaviers/7360908)
+* [Admonitions](https://stackoverflow.com/a/72327818/1439522)
