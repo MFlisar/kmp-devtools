@@ -28,4 +28,4 @@ snippet: MySnippetName
 # Markdown
 
 * [Icons/Emojis](https://gist.github.com/rxaviers/7360908)
-* [Admonitions](https://stackoverflow.com/a/72327818/1439522)
+* [Alerts/Admonitions](https://github.com/github/docs/blob/74e6642840872e8f5b1eea06bed81d779d886109/content/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax.md#alerts)
