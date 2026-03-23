@@ -175,7 +175,7 @@ object BuildFileUtil {
                     resValue(
                         type = "string",
                         name = androidAppConfig.stringResourceIdForAppName,
-                        value = appConfig.appName
+                        value = appConfig.name
                     )
                 }
             }
@@ -238,9 +238,9 @@ object BuildFileUtil {
                 val now = LocalDateTime.now()
                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-                packageName = appConfig.appName // entspricht dem exe Name
+                packageName = appConfig.name // entspricht dem exe Name
                 packageVersion = appConfig.versionName
-                description = "${appConfig.appName} - Build at ${now.format(formatter)}"
+                description = "${appConfig.name} - Build at ${now.format(formatter)}"
                 copyright = "©${now.year} ${config.developer.name}. All rights reserved."
                 vendor = config.developer.name
 
@@ -270,15 +270,15 @@ object BuildFileUtil {
             mainClassName.set(desktopAppConfig.mainClass)
             icon.set(project.file(desktopAppConfig.ico).absolutePath)
             setJarTask(project.tasks.getByName(jarTask))
-            outfile.set("${appConfig.appName}.exe")
+            outfile.set("${appConfig.name}.exe")
 
             val now = LocalDateTime.now()
             val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-            productName.set(appConfig.appName)
+            productName.set(appConfig.name)
             version.set(appConfig.versionName)
             textVersion.set(appConfig.versionName)
-            description = "${appConfig.appName} - Build at ${now.format(formatter)}"
+            description = "${appConfig.name} - Build at ${now.format(formatter)}"
             copyright.set("©${now.year} ${config.developer.name}. All rights reserved.")
             companyName.set(config.developer.name)
 

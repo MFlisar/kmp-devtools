@@ -1,22 +1,29 @@
 package com.michaelflisar.kmpdevtools.core.configs
 
-import org.gradle.api.plugins.ExtraPropertiesExtension
+import com.michaelflisar.kmpdevtools.core.ConfigReader
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import org.gradle.api.Project
+import java.io.File
 
-class AppConfig(
-    val appName: String,
-    val packageName: String,
-    val versionCode: Int,
-    val versionName: String,
-    val androidAppId: String = packageName,
-    val androidNamespace: String = packageName,
+@Serializable
+data class AppConfig(
+    val name: String,
+    @SerialName("package-name") val packageName: String,
+    @SerialName("version-code") val versionCode: Int,
+    @SerialName("version-name") val versionName: String,
+    @SerialName("android-app-id") val androidAppId: String = packageName,
+    @SerialName("android-namespace") val androidNamespace: String = packageName,
 ) {
     companion object {
-        val KEY = "app-config"
 
-        fun read(extra: ExtraPropertiesExtension) = extra[KEY] as AppConfig
-    }
+        const val relativePath = "configs/app-config.yml"
 
-    fun save(extra: ExtraPropertiesExtension) {
-        extra[KEY] = this
+        fun read(project: org.gradle.api.initialization.ProjectDescriptor) =
+            readFromProject(project.projectDir)
+
+        fun read(project: Project) = readFromProject(project.rootDir)
+        fun readFromProject(root: File) =
+            ConfigReader.readFromProject(root, relativePath, serializer())
     }
 }

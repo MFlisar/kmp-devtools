@@ -5,8 +5,8 @@ import com.android.build.api.dsl.BuildFeatures
 import com.android.build.api.dsl.DefaultConfig
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import com.michaelflisar.kmpdevtools.configs.app.AndroidAppConfig
-import com.michaelflisar.kmpdevtools.configs.library.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.app.WasmAppConfig
+import com.michaelflisar.kmpdevtools.configs.library.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.core.Platform
 import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import com.michaelflisar.kmpdevtools.core.configs.Config
@@ -110,7 +110,7 @@ class Targets(
         config: Config,
         libraryConfig: LibraryConfig,
         androidConfig: AndroidLibraryConfig,
-        androidTarget: KotlinMultiplatformAndroidLibraryTarget
+        androidTarget: KotlinMultiplatformAndroidLibraryTarget,
     ) {
         setupAndroidLibraryTarget(
             androidTarget,
@@ -168,7 +168,7 @@ class Targets(
 
             project.extensions.configure(KotlinMultiplatformExtension::class.java) {
 
-                with (target) {
+                with(target) {
                     namespace = libraryConfig.library.namespace + "." + androidConfig.namespaceAddon
                     compileSdk = androidConfig.compileSdk.get().toInt()
                     minSdk = androidConfig.minSdk.get().toInt()
@@ -182,6 +182,35 @@ class Targets(
                     configure()
                 }
 
+                // possible extension classes:
+                // com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
+                // com.android.build.api.dsl.LibraryExtension
+                // org.jetbrains.compose.android.AndroidExtension
+
+                //project.extensions.configure(KotlinMultiplatformExtension::class.java) {
+                //    val android = project.extensions.getByType(com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension::class.java)
+                //    with(android)
+                //    {
+                //        namespace = libraryConfig.library.namespace + "." + androidConfig.namespaceAddon
+                //        compileSdk = androidConfig.compileSdk.get().toInt()
+                //        minSdk = androidConfig.minSdk.get().toInt()
+//
+                //        compilerOptions {
+                //            jvmTarget.set(JvmTarget.fromTarget(config.javaVersion))
+                //        }
+//
+                //        androidResources { enable = androidConfig.enableAndroidResources }
+//
+                //        configure()
+                //    }
+                //}
+
+                //if (isKotlinAndroidPluginApplied(project)) {
+                //    project.extensions.configure<CommonExtension>("android") {
+//
+                //    }
+                //}
+//
                 //android {
                 //}
             }
@@ -209,7 +238,7 @@ class Targets(
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
             if (android) {
-                with (extension)
+                with(extension)
                 {
                     namespace = appConfig.packageName
                     compileSdk = androidAppConfig.compileSdk.get().toInt()

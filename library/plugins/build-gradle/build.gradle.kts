@@ -56,6 +56,9 @@ dependencies {
     implementation(gradleApi())
     implementation(gradleKotlinDsl())
 
+    implementation("com.android.built-in-kotlin:com.android.built-in-kotlin.gradle.plugin:9.1.0")
+    implementation("com.android.library:com.android.library.gradle.plugin:9.1.0")
+    implementation("com.android.kotlin.multiplatform.library:com.android.kotlin.multiplatform.library.gradle.plugin:9.1.0")
 
     api(project(":library:core"))
 }
