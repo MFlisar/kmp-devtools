@@ -146,12 +146,13 @@ object UpdateReadmeUtil {
             appendLine("[libraries]")
             appendLine()
             for (module in modules) {
-                appendLine("${module.artifactId} = { module = \"${libraryConfig.maven.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
+                appendLine("${libraryName}-${module.artifactId} = { module = \"${libraryConfig.maven.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
             }
         }
         val setupViaVersionCatalogue2 = buildString {
             for (module in modules) {
-                appendLine("implementation(libs.${module.artifactId.replace("-", ".")})")
+                val key = "${libraryName}-${module.artifactId}".replace("-", ".")
+                appendLine("implementation(libs.$key})")
             }
         }
 
