@@ -7,8 +7,6 @@ import com.michaelflisar.kmpdevtools.readme.classes.FolderLink
 import com.michaelflisar.kmpdevtools.readme.classes.Partial
 import com.michaelflisar.kmpdevtools.readme.classes.Placeholder
 import java.io.File
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 object UpdateReadmeUtil {
 
@@ -80,7 +78,7 @@ object UpdateReadmeUtil {
             .filter { it.startsWithIgnoreCase(folderDocumentationModules) }
             .map {
                 val relativePath = it.relativePathTo(rootDir)
-                val encodedRelativePath = URLEncoder.encode(relativePath, StandardCharsets.UTF_8.toString())
+                val encodedRelativePath =  encodeRelativeLink(relativePath)
                 "- [${it.name}]($encodedRelativePath)"
             }
         val otherLinks = buildMarkdownLinks(
@@ -155,7 +153,7 @@ object UpdateReadmeUtil {
         val setupViaVersionCatalogue2 = buildString {
             for (module in modules) {
                 val key = "${libraryName}-${module.artifactId}".replace("-", ".")
-                appendLine("implementation(libs.$key})")
+                appendLine("implementation(libs.$key)")
             }
         }
 
@@ -425,7 +423,7 @@ object UpdateReadmeUtil {
                         name = key,
                         link = fileObj?.let {
                             val rel = it.file.relativeTo(rootDir).invariantSeparatorsPath
-                            val encodedRelativePath = URLEncoder.encode(rel, StandardCharsets.UTF_8.toString())
+                            val encodedRelativePath = encodeRelativeLink(rel)
                             "[${it.name}]($encodedRelativePath)"
                         },
                         children = emptyList()
@@ -434,5 +432,9 @@ object UpdateReadmeUtil {
             }
         }
         return buildTree(relPaths)
+    }
+
+    private fun encodeRelativeLink(link: String) : String{
+        return link.replace(" ", "%20")
     }
 }
