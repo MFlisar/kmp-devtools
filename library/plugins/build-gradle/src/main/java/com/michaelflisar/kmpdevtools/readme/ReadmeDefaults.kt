@@ -14,6 +14,7 @@ object ReadmeDefaults {
     val headerTableOfContent = ReadmeRegion(null, "Table of Contents")
     val headerScreenshots = ReadmeRegion("camera", "Screenshots")
     val headerSupportedPlatform = ReadmeRegion("computer", "Supported Platforms")
+    val headerVersions = ReadmeRegion("arrow_right", "Versions")
     val headerSetup = ReadmeRegion("wrench", "Setup")
     val headerUsage = ReadmeRegion("rocket", "Usage")
     val headerModules = ReadmeRegion("file_folder", "Modules")
@@ -26,6 +27,7 @@ object ReadmeDefaults {
         headerTableOfContent,
         headerScreenshots,
         headerSupportedPlatform,
+        headerVersions,
         headerSetup,
         headerUsage,
         headerModules,
@@ -53,6 +55,12 @@ object ReadmeDefaults {
         ${headerSupportedPlatform.markdownHeader()}
 
         {{ supported_platforms }}
+        
+        ${headerVersions.markdownHeader()}
+
+        {{ versions }}
+        
+        {{ experimental }}
 
         ${headerSetup.markdownHeader()}
         

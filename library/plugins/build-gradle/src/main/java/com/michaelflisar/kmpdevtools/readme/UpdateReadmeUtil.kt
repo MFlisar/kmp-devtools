@@ -32,6 +32,7 @@ object UpdateReadmeUtil {
 
         // files
         val fileAppVersionToml = File(rootDir, "gradle/app.versions.toml")
+        val fileLibsVersionToml = File(rootDir, "gradle/libs.versions.toml")
         val fileReadme = File(rootDir, "README.md")
         val folderDocumentation = File(rootDir, "documentation")
         val folderDocumentationModules = File(rootDir, "documentation/$folderModules")
@@ -78,7 +79,7 @@ object UpdateReadmeUtil {
             .filter { it.startsWithIgnoreCase(folderDocumentationModules) }
             .map {
                 val relativePath = it.relativePathTo(rootDir)
-                val encodedRelativePath =  encodeRelativeLink(relativePath)
+                val encodedRelativePath = encodeRelativeLink(relativePath)
                 "- [${it.name}]($encodedRelativePath)"
             }
         val otherLinks = buildMarkdownLinks(
@@ -88,6 +89,62 @@ object UpdateReadmeUtil {
                 folderDocumentation
             )
         )
+
+        val ignoreExperimentalAnnoation = { annotation : String ->
+            annotation.startsWith("com.michaelflisar") && annotation.contains("InternalApi")
+        }
+
+        val experimentalAnnotations = HashMap<String, Int>()
+        modules
+            .map { module -> File(rootDir, module.path) }
+            .map { it.walkTopDown() }
+            .flatMap { it }
+            .filter { it.isFile && it.extension in listOf("kt") }
+            .forEach {
+                val lines = it.readLines()
+                val allImports = lines
+                    .filter { it.trim().startsWith("import ") }
+                    .map { it.trim().removePrefix("import ").trim() }
+
+                lines
+                    .forEach {
+                        val line = it.trim()
+                        val optIns = if (line.startsWith("@OptIn(")) {
+                            val optIns = line.removePrefix("@OptIn(").removeSuffix(")").trim()
+                            optIns.removePrefix("[").removeSuffix("]").split(",").map { it.trim() }
+                        } else {
+                            emptyList()
+                        }
+                        val experimental = if (line.startsWith("@Experimental")) {
+                            listOf(line.substringAfter("@").substringBefore("(").trim())
+                        } else {
+                            emptyList()
+                        }
+                        val allExperimentalClasses =
+                            (optIns + experimental)
+                                .map { it.removeSuffix("::class") }
+                                .map { annotation ->
+                            // suche imports um vollen namen der annotations zu bekommen
+                            val matchingImport = allImports.find { it.endsWith(".$annotation") }
+                            matchingImport ?: annotation
+                        }.distinct()
+
+                        allExperimentalClasses.forEach {
+                            if (!ignoreExperimentalAnnoation(it)) {
+                                if (experimentalAnnotations.containsKey(it)) {
+                                    experimentalAnnotations[it] = experimentalAnnotations[it]!! + 1
+                                } else {
+                                    experimentalAnnotations[it] = 1
+                                }
+                            }
+                        }
+                    }
+
+                if (experimentalAnnotations.isNotEmpty()) {
+                    println("Found experimental annotations in file ${it.relativeTo(rootDir)}:")
+                    experimentalAnnotations.forEach { println("- $it") }
+                }
+            }
 
         // 3) create header replacement
         val imageMavenCentral = ReadmeDefaults.imageMavenCentral(libraryConfig)
@@ -121,11 +178,42 @@ object UpdateReadmeUtil {
             appendLine("| " + header.joinToString(" | ") + " |")
             appendLine("|" + header.joinToString("|") { "---" } + "|")
             for ((module, platforms) in supportedPlatforms) {
-                val row = listOf(module.artifactId) + allSupportedPlatformsLowercase.map { platform ->
-                    if (platforms.map { it.lowercase() }
-                            .contains(platform.lowercase())) "✅" else "❌"
-                }
+                val row =
+                    listOf(module.artifactId) + allSupportedPlatformsLowercase.map { platform ->
+                        if (platforms.map { it.lowercase() }
+                                .contains(platform.lowercase())) "✅" else "❌"
+                    }
                 appendLine("| " + row.joinToString(" | ") + " |")
+            }
+        }
+        val versionsTable = buildString {
+            val header = listOf("Dependency", "Version")
+            appendLine("| " + header.joinToString(" | ") + " |")
+            appendLine("|" + header.joinToString("|") { "---" } + "|")
+
+            // kotlin
+            val kotlinVersion = readTOMLProperty(fileLibsVersionToml, "versions", "kotlin")
+
+            // org.jetbrains.compose
+            val jetbrainsCompose =
+                tryReadTOMLProperty(fileLibsVersionToml, "versions", "jetbrains-compose")
+            val jetbrainsComposeMaterial3 =
+                tryReadTOMLProperty(fileLibsVersionToml, "versions", "jetbrains-compose-material3")
+
+            appendLine("| Kotlin | `$kotlinVersion` |")
+            if (jetbrainsCompose != null)
+                appendLine("| Jetbrains Compose | `$jetbrainsCompose` |")
+            if (jetbrainsComposeMaterial3 != null)
+                appendLine("| Jetbrains Compose Material3 | `$jetbrainsComposeMaterial3` |")
+        }
+        val experimentalInfo = buildString {
+            if (experimentalAnnotations.isNotEmpty()) {
+                appendLine("> :warning: Following experimental annotations are used:")
+                experimentalAnnotations.forEach {
+                    appendLine("> - `${it.key}` (${it.value}x)")
+                }
+                appendLine(">")
+                appendLine("> I try to use as less experimental features as possible, but in this case the ones above are needed!")
             }
         }
 
@@ -200,6 +288,8 @@ object UpdateReadmeUtil {
             Placeholder("{{ modules }}", moduleLinks.joinToString("\n")),
             Placeholder("{{ links }}", otherLinks.joinToString("\n")),
             Placeholder("{{ supported_platforms }}", supportedPlatformsTable),
+            Placeholder("{{ versions }}", versionsTable),
+            Placeholder("{{ experimental }}", experimentalInfo),
             Placeholder("{{ setup-via-dependencies }}", setupViaDependencies),
             Placeholder("{{ setup-via-version-catalogue1 }}", setupViaVersionCatalogue1),
             Placeholder("{{ setup-via-version-catalogue2 }}", setupViaVersionCatalogue2),
@@ -329,6 +419,27 @@ object UpdateReadmeUtil {
     }
 
     /**
+     * Reads a property from a TOML file.
+     *
+     * @param file The TOML file to read from.
+     * @param region The region in the TOML file (e.g. "versions")
+     * @param key The key to read (e.g. "minSDK")
+     */
+    private fun tryReadTOMLProperty(file: File, region: String, key: String): String? {
+        val content = file.readText(Charsets.UTF_8)
+        val regionStart = content.indexOf("[$region]")
+        if (regionStart == -1) {
+            return null
+        }
+        val regionEnd =
+            content.indexOf("[", regionStart + 1).let { if (it == -1) content.length else it }
+        val regionContent = content.substring(regionStart, regionEnd)
+        val regex = Regex("""$key\s*=\s*["']?([^"'\n\r]+)["']?""")
+        val matchResult = regex.find(regionContent)
+        return matchResult?.groups?.get(1)?.value
+    }
+
+    /**
      * Parses the supported platforms from a module's build.gradle.kts file.
      *
      * content may look like this:
@@ -418,7 +529,8 @@ object UpdateReadmeUtil {
                         children = buildTree(children, fullPath)
                     )
                 } else {
-                    val fileObj = customMarkdownFiles.find { it.file.relativeTo(folderDocumentation).invariantSeparatorsPath == fullPath }
+                    val fileObj =
+                        customMarkdownFiles.find { it.file.relativeTo(folderDocumentation).invariantSeparatorsPath == fullPath }
                     FolderLink(
                         name = key,
                         link = fileObj?.let {
@@ -434,7 +546,7 @@ object UpdateReadmeUtil {
         return buildTree(relPaths)
     }
 
-    private fun encodeRelativeLink(link: String) : String{
+    private fun encodeRelativeLink(link: String): String {
         return link.replace(" ", "%20")
     }
 }
