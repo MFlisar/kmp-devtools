@@ -11,7 +11,7 @@ Offers useful `gradle` functions to set up KMP modules as well as a script to ge
 
 # Documentation
 
-Code:
+## Code
 
 ```java
 // begin-snippet: MySnippetName
@@ -19,7 +19,7 @@ val text = "Hello, World!"
 // end-snippet
 ```
 
-Markdown:
+## Markdown
 
 ```
 snippet: MySnippetName
