@@ -2,6 +2,7 @@ package com.michaelflisar.kmpdevtools
 
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
+import com.android.build.gradle.internal.crash.afterEvaluate
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
 import com.michaelflisar.kmpdevtools.configs.app.AndroidAppConfig
@@ -256,7 +257,28 @@ object BuildFileUtil {
         }
     }
 
-    fun setupLaunch4J(
+    fun registerLaunch4JTask(
+        project: Project,
+        config: Config,
+        appConfig: AppConfig,
+        desktopAppConfig: DesktopAppConfig,
+        jarTask: String = "flattenReleaseJars",
+        outputFile: (exe: File) -> File = { it },
+    ) {
+        project.tasks.register("launch4j", Launch4jLibraryTask::class.java) {
+            setupLaunch4J(
+                project = project,
+                config = config,
+                task = this,
+                appConfig = appConfig,
+                desktopAppConfig = desktopAppConfig,
+                jarTask = jarTask,
+                outputFile = outputFile
+            )
+        }
+    }
+
+    private fun setupLaunch4J(
         project: Project,
         config: Config,
         task: Launch4jLibraryTask,
@@ -306,6 +328,73 @@ object BuildFileUtil {
                         .replace("\\", "/")
                 )
                 println("")
+            }
+        }
+    }
+
+    fun registerExtractProguardMapFromAABTask(
+        project: Project,
+        appName: String,
+        appVersionName: String,
+        outputFolder: String = "${if (project.providers.gradleProperty("work").isPresent) "D:/dev" else "M:/dev"}/06 - retrace"
+    ) {
+        afterEvaluate {
+            project.tasks.named("bundleRelease").configure {
+                finalizedBy("extractProguardMap")
+            }
+        }
+
+        project.tasks.register("extractProguardMap") {
+            doLast {
+                extractProguardMapFromAAB(project, appName, appVersionName, outputFolder)
+            }
+        }
+    }
+
+    private fun extractProguardMapFromAAB(
+        project: Project,
+        appName: String,
+        versionName: String,
+        outputFolder: String
+    ) {
+        with(project) {
+
+            val outputDir = outputFolder
+
+            //val dev = if (providers.gradleProperty("work").isPresent) "D:/dev" else "M:/dev"
+            val projectName = project.name
+            val aabFile = file("release/$projectName-release.aab")
+
+            // Files / Paths
+            val proguardMapRootZipPath = "BUNDLE-METADATA"
+            val proguardMapZipPath =
+                "$proguardMapRootZipPath/com.android.tools.build.obfuscation/proguard.map"
+            val proguardMapOutput = File("$outputDir/$appName - Proguard $versionName.map")
+            val proguardTmpFolder = File("$outputDir/$proguardMapRootZipPath")
+            val proguardFile = File(proguardMapOutput.parentFile, proguardMapZipPath)
+
+            // 1) das ProGuard-Map-File aus der aab extrahieren
+            copy {
+                copySpec {
+                    from(zipTree(aabFile)) {
+                        include(proguardMapZipPath)
+                    }
+                    into(proguardMapOutput.parentFile)
+                }
+            }
+
+            // 2) das ProGuard-Map-File umbenennen
+            if (proguardMapOutput.exists())
+                proguardMapOutput.delete()
+            val success = proguardFile.renameTo(proguardMapOutput)
+
+            // 3) die alten Dateien löschen
+            proguardTmpFolder.deleteRecursively()
+
+            if (success) {
+                println("ProGuard-Map-Datei wurde in ${proguardMapOutput.absolutePath} umbenannt.")
+            } else {
+                throw kotlin.Exception("ERROR - ProGuard-Map-Datei wurde NICHT in ${proguardMapOutput.absolutePath} umbenannt!")
             }
         }
     }

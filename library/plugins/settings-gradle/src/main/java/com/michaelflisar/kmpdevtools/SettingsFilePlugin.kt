@@ -21,7 +21,7 @@ class SettingsFilePlugin : Plugin<Settings> {
         return settings.providers.gradleProperty(property).get().toBoolean()
     }
 
-    fun includeModules(libraryId: String, libraryConfig: LibraryConfig, includeDokka: Boolean, libraryFolder: String = "library", include: (name: String) -> Boolean = { true }) {
+    fun includeModules(libraryId: String, libraryConfig: LibraryConfig, includeDokka: Boolean, libraryFolder: String = "library") {
         val allPaths = libraryConfig.modules.map { it.path }.distinct()
         val foldersInPaths = allPaths.map { it.substringBeforeLast("/", "") }.distinct()
 
@@ -37,12 +37,8 @@ class SettingsFilePlugin : Plugin<Settings> {
         println("Including modules - libraryId = '$libraryId'")
         libraryConfig.modules.forEach {
             val name = ModuleUtil.folderToModuleName(it.path, libraryId, libraryFolder)
-            if (include(name)) {
-                includeModule(it.path, name)
-                println("- $name => ${it.path}")
-            } else {
-                println("- $name => ${it.path} (excluded)")
-            }
+            includeModule(it.path, name)
+            println("- $name => ${it.path}")
         }
         if (includeDokka) {
             includeModule("library/dokka", ":dokka")

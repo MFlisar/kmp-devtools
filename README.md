@@ -9,6 +9,9 @@ Offers useful `gradle` functions to set up KMP modules as well as a script to ge
 * `renameProject`
 * `updateDevToolsVersion`
 
+* `BuildFileUtil.registerLaunch4JTask()` creates as task called "launch4j"
+* `BuildFileUtil.registerExtractProguardMapFromAABTask()` creates as task called "extractProguardMap" (automatically called after `bundleRelease`)
+
 # Snippets
 
 ## Snippets in Code
