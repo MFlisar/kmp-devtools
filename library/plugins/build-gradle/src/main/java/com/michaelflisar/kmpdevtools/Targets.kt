@@ -59,16 +59,15 @@ class Targets(
     fun setupDependencies(
         sourceSet: KotlinSourceSet,
         sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
-        buildTargets: Targets,
         platforms: List<Platform>,
         platformsNotSupported: Boolean = false,
     ) {
         val targets = if (platformsNotSupported) {
-            buildTargets.getPlatforms(exclusions = platforms)
+            getPlatforms(exclusions = platforms)
         } else {
             platforms
         }
-        targets.filter { buildTargets.isEnabled(it) }.forEach { target ->
+        targets.filter { isEnabled(it) }.forEach { target ->
             target.targets.forEach {
                 sourceSets.getByName("${it}Main").dependsOn(sourceSet)
             }
