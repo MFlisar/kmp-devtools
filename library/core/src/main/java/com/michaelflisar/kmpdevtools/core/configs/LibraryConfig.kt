@@ -46,7 +46,7 @@ data class LibraryConfig(
         val license: License,
     ) {
         fun getRepoLink(developer: Config.Developer): String {
-            return "https://github.com/{${developer.githubUserName}}/${name}/"
+            return "https://github.com/${developer.githubUserName}/${name}/"
         }
 
         @Serializable
