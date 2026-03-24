@@ -168,7 +168,7 @@ class Targets(
             project.extensions.configure(KotlinMultiplatformExtension::class.java) {
 
                 with(target) {
-                    namespace = libraryConfig.library.namespace + "." + androidConfig.namespaceAddon
+                    namespace = androidConfig.getNamespace(project, libraryConfig)
                     compileSdk = androidConfig.compileSdk.get().toInt()
                     minSdk = androidConfig.minSdk.get().toInt()
 
