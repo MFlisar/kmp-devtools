@@ -91,7 +91,9 @@ object UpdateReadmeUtil {
         )
 
         val ignoreExperimentalAnnoation = { annotation : String ->
-            annotation.startsWith("com.michaelflisar") && annotation.contains("InternalApi")
+            (annotation.startsWith("com.michaelflisar") && annotation.contains("InternalApi")) ||
+                    // kein namespace, dh. es ist intern im gleichen Ordner
+                    annotation == "InternalApi"
         }
 
         val experimentalAnnotations = HashMap<String, Int>()
