@@ -105,7 +105,7 @@ object UpdateReadmeUtil {
                     annotation == "InternalApi"
         }
 
-        val experimentalAnnotations = HashMap<String, Int>()
+        var experimentalAnnotations = listOf<ExperimentalAnnotationInfo>()
         modules
             .map { module -> File(rootDir, module.path) }
             .map { it.walkTopDown() }
@@ -117,9 +117,14 @@ object UpdateReadmeUtil {
                     .filter { it.trim().startsWith("import ") }
                     .map { it.trim().removePrefix("import ").trim() }
 
+                var experimentalAnnotationsInFile = listOf<ExperimentalAnnotationInfo>()
+
                 lines
                     .forEach {
+
                         val line = it.trim()
+
+                        // 1) OptIns suchen
                         val optIns = if (line.startsWith("@OptIn(")) {
                             val optIns = line.removePrefix("@OptIn(").removeSuffix(")").trim()
                             optIns.removePrefix("[").removeSuffix("]").split(",")
@@ -127,37 +132,48 @@ object UpdateReadmeUtil {
                         } else {
                             emptyList()
                         }
+
+                        // 2) @Experimental suchen
                         val experimental = if (line.startsWith("@Experimental")) {
                             listOf(line.substringAfter("@").substringBefore("(").trim())
                         } else {
                             emptyList()
                         }
-                        val allExperimentalClasses =
-                            (optIns + experimental)
-                                .map { it.removeSuffix("::class") }
-                                .map { annotation ->
-                                    // suche imports um vollen namen der annotations zu bekommen
-                                    val matchingImport =
-                                        allImports.find { it.endsWith(".$annotation") }
-                                    matchingImport ?: annotation
-                                }.distinct()
 
-                        allExperimentalClasses.forEach {
-                            if (!ignoreExperimentalAnnoation(it)) {
-                                if (experimentalAnnotations.containsKey(it)) {
-                                    experimentalAnnotations[it] =
-                                        experimentalAnnotations[it]!! + 1
-                                } else {
-                                    experimentalAnnotations[it] = 1
-                                }
-                            }
+                        // 3) alle OptIn Infos erstellen
+                        val optInInfos = optIns.map {
+                            val optIn = it.removeSuffix("::class")
+                            val matchingImport = allImports.find { it.endsWith(".$optIn") }
+                            val fullOptIn = matchingImport ?: optIn
+                            ExperimentalAnnotationInfo(
+                                name = fullOptIn,
+                                count = 1,
+                                type = ExperimentalAnnotationInfo.Type.OptIn
+                            )
                         }
+
+                        // 4) alle Experimental Infos erstellen
+                        val experimentalInfos = experimental.map {
+                            val exp = it.removeSuffix("::class")
+                            val matchingImport = allImports.find { it.endsWith(".$exp") }
+                            val fullExp = matchingImport ?: exp
+                            ExperimentalAnnotationInfo(
+                                name = fullExp,
+                                count = 1,
+                                type = ExperimentalAnnotationInfo.Type.Experimental
+                            )
+                        }
+
+                        val allInfos = optInInfos + experimentalInfos
+                        experimentalAnnotationsInFile = ExperimentalAnnotationInfo.combine(experimentalAnnotationsInFile, allInfos)
                     }
 
-                if (experimentalAnnotations.isNotEmpty()) {
+                if (experimentalAnnotationsInFile.isNotEmpty()) {
                     println("Found experimental annotations in file ${it.relativeTo(rootDir)}:")
-                    experimentalAnnotations.forEach { println("- $it") }
+                    experimentalAnnotationsInFile.forEach { println("- $it") }
                 }
+
+                experimentalAnnotations = ExperimentalAnnotationInfo.combine(experimentalAnnotations, experimentalAnnotationsInFile).sorted()
             }
 
         // 3) create header replacement
@@ -227,8 +243,12 @@ object UpdateReadmeUtil {
         val experimentalInfo = buildString {
             if (experimentalAnnotations.isNotEmpty()) {
                 appendLine("> :warning: Following experimental annotations are used:")
-                experimentalAnnotations.forEach {
-                    appendLine("> - `${it.key}` (${it.value}x)")
+                val grouped = experimentalAnnotations.groupBy { it.type }
+                grouped.forEach { type, infos ->
+                    appendLine("> - **${type.name}**")
+                    infos.forEach {
+                        appendLine(">   - `${it.name}` (${it.count}x)")
+                    }
                 }
                 appendLine(">")
                 appendLine("> I try to use as less experimental features as possible, but in this case the ones above are needed!")
@@ -567,5 +587,42 @@ object UpdateReadmeUtil {
 
     private fun encodeRelativeLink(link: String): String {
         return link.replace(" ", "%20")
+    }
+
+    private data class ExperimentalAnnotationInfo(
+        val name: String,
+        val count: Int,
+        val type: Type,
+    ) : Comparable<ExperimentalAnnotationInfo> {
+
+        enum class Type {
+            OptIn, Experimental
+        }
+
+        companion object {
+
+            fun combine(list1: List<ExperimentalAnnotationInfo>, list2: List<ExperimentalAnnotationInfo>): List<ExperimentalAnnotationInfo> {
+                val combined = mutableListOf<ExperimentalAnnotationInfo>()
+                val all = list1 + list2
+                for (info in all) {
+                    val index = combined.indexOfFirst { it.name == info.name && it.type == info.type }
+                    if (index != -1) {
+                        val existing = combined.removeAt(index)
+                        combined.add(existing.copy(count = existing.count + info.count))
+                    } else {
+                        combined.add(info)
+                    }
+                }
+                return combined
+            }
+        }
+
+        override fun compareTo(other: ExperimentalAnnotationInfo): Int {
+            // zuerst nach type sortieren (Experimental vor OptIn), dann nach name alphabetisch (ignoriere case)
+            return when {
+                this.type != other.type -> this.type.compareTo(other.type)
+                else -> this.name.lowercase().compareTo(other.name.lowercase())
+            }
+        }
     }
 }
