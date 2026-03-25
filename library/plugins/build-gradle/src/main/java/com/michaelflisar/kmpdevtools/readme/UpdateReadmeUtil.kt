@@ -23,359 +23,382 @@ object UpdateReadmeUtil {
         hasApiDocs: Boolean = ReadmeDefaults.HAS_API_DOCS,
     ) {
         println("")
-        println("#####################################")
-        println("###   BEGIN updateMarkdownFiles   ###")
-        println("#####################################")
+        println("################################")
+        println("### BEGIN Updating README.md ###")
+        println("################################")
         println("")
 
-        val modules = libraryConfig.modules.filter { it.artifactId.isNotEmpty() }
-
-        // files
-        val fileAppVersionToml = File(rootDir, "gradle/app.versions.toml")
-        val fileLibsVersionToml = File(rootDir, "gradle/libs.versions.toml")
-        val fileReadme = File(rootDir, "README.md")
-        val folderDocumentation = File(rootDir, "documentation")
-        val folderDocumentationModules = File(rootDir, "documentation/$folderModules")
-        val folderDocumentationScreenshots = File(rootDir, "documentation/$folderScreenshots")
-
-        // load data from project files
-        val minSdk = readTOMLProperty(fileAppVersionToml, "versions", "minSdk").toInt()
-        val supportedPlatforms = modules.map { module ->
-            val platforms =
-                getSupportedPlatformsFromModule(File(rootDir, "${module.path}/build.gradle.kts"))
-            module to platforms
+        if (!config.updateReadme) {
+            println("Skipping because 'updateReadme' is set to false in config.yml")
         }
-        val allSupportedPlatforms = supportedPlatforms.map { it.second }.flatten().distinct()
-        val allSupportedPlatformsLowercase = allSupportedPlatforms.map { it.lowercase() }
+        else
+        {
+            val modules = libraryConfig.modules.filter { it.artifactId.isNotEmpty() }
 
-        val isAndroidSupported = allSupportedPlatformsLowercase.contains("android")
-        val isIosSupported = allSupportedPlatformsLowercase.contains("ios")
-        val isWindowsSupported = allSupportedPlatformsLowercase.contains("windows")
-        val isMacOsSupported = allSupportedPlatformsLowercase.contains("macos")
-        val isLinuxSupported = allSupportedPlatformsLowercase.contains("linux")
-        val isWasmSupported = allSupportedPlatformsLowercase.contains("wasm")
-        val isJsSupported = allSupportedPlatformsLowercase.contains("js")
+            // files
+            val fileAppVersionToml = File(rootDir, "gradle/app.versions.toml")
+            val fileLibsVersionToml = File(rootDir, "gradle/libs.versions.toml")
+            val fileReadme = File(rootDir, "README.md")
+            val folderDocumentation = File(rootDir, "documentation")
+            val folderDocumentationModules = File(rootDir, "documentation/$folderModules")
+            val folderDocumentationScreenshots = File(rootDir, "documentation/$folderScreenshots")
 
-        // 1) load all markdown files from the documentation folder (excluding _partials)
-        val markdownTitleRegex = Regex("^#\\s+(.*)$", RegexOption.MULTILINE)
-        //val pathDocumentation = "documentation"
-        //val pathModules = "documentation/modules"
-        val markdownFilesWithName = folderDocumentation
-            .walkTopDown()
-            .filter { it.isFile && it.extension == "md" }
-            .filter { !it.path.contains("_partials") }
-            .toList()
-            .sortedBy { it.path }
-            .map {
-                val content = it.readText()
-                // extract name from first markdown header
-                val nameMatch = markdownTitleRegex.find(content)
-                val name = nameMatch?.groups?.get(1)?.value?.trim() ?: it.nameWithoutExtension
-                CustomMarkdownFile(it, name)
+            // load data from project files
+            val minSdk = readTOMLProperty(fileAppVersionToml, "versions", "minSdk").toInt()
+            val supportedPlatforms = modules.map { module ->
+                val platforms =
+                    getSupportedPlatformsFromModule(
+                        File(
+                            rootDir,
+                            "${module.path}/build.gradle.kts"
+                        )
+                    )
+                module to platforms
             }
+            val allSupportedPlatforms = supportedPlatforms.map { it.second }.flatten().distinct()
+            val allSupportedPlatformsLowercase = allSupportedPlatforms.map { it.lowercase() }
 
-        // 2) get all modules and other markdown files als hierarchische Links
-        val moduleLinks = markdownFilesWithName
-            .filter { it.startsWithIgnoreCase(folderDocumentationModules) }
-            .map {
-                val relativePath = it.relativePathTo(rootDir)
-                val encodedRelativePath = encodeRelativeLink(relativePath)
-                "- [${it.name}]($encodedRelativePath)"
-            }
-        val otherLinks = buildMarkdownLinks(
-            buildFolderLinkHierarchy(
-                markdownFilesWithName.filter { !it.startsWithIgnoreCase(folderDocumentationModules) },
-                rootDir,
-                folderDocumentation
+            val isAndroidSupported = allSupportedPlatformsLowercase.contains("android")
+            val isIosSupported = allSupportedPlatformsLowercase.contains("ios")
+            val isWindowsSupported = allSupportedPlatformsLowercase.contains("windows")
+            val isMacOsSupported = allSupportedPlatformsLowercase.contains("macos")
+            val isLinuxSupported = allSupportedPlatformsLowercase.contains("linux")
+            val isWasmSupported = allSupportedPlatformsLowercase.contains("wasm")
+            val isJsSupported = allSupportedPlatformsLowercase.contains("js")
+
+            // 1) load all markdown files from the documentation folder (excluding _partials)
+            val markdownTitleRegex = Regex("^#\\s+(.*)$", RegexOption.MULTILINE)
+            //val pathDocumentation = "documentation"
+            //val pathModules = "documentation/modules"
+            val markdownFilesWithName = folderDocumentation
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "md" }
+                .filter { !it.path.contains("_partials") }
+                .toList()
+                .sortedBy { it.path }
+                .map {
+                    val content = it.readText()
+                    // extract name from first markdown header
+                    val nameMatch = markdownTitleRegex.find(content)
+                    val name = nameMatch?.groups?.get(1)?.value?.trim() ?: it.nameWithoutExtension
+                    CustomMarkdownFile(it, name)
+                }
+
+            // 2) get all modules and other markdown files als hierarchische Links
+            val moduleLinks = markdownFilesWithName
+                .filter { it.startsWithIgnoreCase(folderDocumentationModules) }
+                .map {
+                    val relativePath = it.relativePathTo(rootDir)
+                    val encodedRelativePath = encodeRelativeLink(relativePath)
+                    "- [${it.name}]($encodedRelativePath)"
+                }
+            val otherLinks = buildMarkdownLinks(
+                buildFolderLinkHierarchy(
+                    markdownFilesWithName.filter {
+                        !it.startsWithIgnoreCase(
+                            folderDocumentationModules
+                        )
+                    },
+                    rootDir,
+                    folderDocumentation
+                )
             )
-        )
 
-        val ignoreExperimentalAnnoation = { annotation : String ->
-            (annotation.startsWith("com.michaelflisar") && annotation.contains("InternalApi")) ||
-                    // kein namespace, dh. es ist intern im gleichen Ordner
-                    annotation == "InternalApi"
-        }
+            val ignoreExperimentalAnnoation = { annotation: String ->
+                (annotation.startsWith("com.michaelflisar") && annotation.contains("InternalApi")) ||
+                        // kein namespace, dh. es ist intern im gleichen Ordner
+                        annotation == "InternalApi"
+            }
 
-        val experimentalAnnotations = HashMap<String, Int>()
-        modules
-            .map { module -> File(rootDir, module.path) }
-            .map { it.walkTopDown() }
-            .flatMap { it }
-            .filter { it.isFile && it.extension in listOf("kt") }
-            .forEach {
-                val lines = it.readLines()
-                val allImports = lines
-                    .filter { it.trim().startsWith("import ") }
-                    .map { it.trim().removePrefix("import ").trim() }
+            val experimentalAnnotations = HashMap<String, Int>()
+            modules
+                .map { module -> File(rootDir, module.path) }
+                .map { it.walkTopDown() }
+                .flatMap { it }
+                .filter { it.isFile && it.extension in listOf("kt") }
+                .forEach {
+                    val lines = it.readLines()
+                    val allImports = lines
+                        .filter { it.trim().startsWith("import ") }
+                        .map { it.trim().removePrefix("import ").trim() }
 
-                lines
-                    .forEach {
-                        val line = it.trim()
-                        val optIns = if (line.startsWith("@OptIn(")) {
-                            val optIns = line.removePrefix("@OptIn(").removeSuffix(")").trim()
-                            optIns.removePrefix("[").removeSuffix("]").split(",").map { it.trim() }
-                        } else {
-                            emptyList()
-                        }
-                        val experimental = if (line.startsWith("@Experimental")) {
-                            listOf(line.substringAfter("@").substringBefore("(").trim())
-                        } else {
-                            emptyList()
-                        }
-                        val allExperimentalClasses =
-                            (optIns + experimental)
-                                .map { it.removeSuffix("::class") }
-                                .map { annotation ->
-                            // suche imports um vollen namen der annotations zu bekommen
-                            val matchingImport = allImports.find { it.endsWith(".$annotation") }
-                            matchingImport ?: annotation
-                        }.distinct()
+                    lines
+                        .forEach {
+                            val line = it.trim()
+                            val optIns = if (line.startsWith("@OptIn(")) {
+                                val optIns = line.removePrefix("@OptIn(").removeSuffix(")").trim()
+                                optIns.removePrefix("[").removeSuffix("]").split(",")
+                                    .map { it.trim() }
+                            } else {
+                                emptyList()
+                            }
+                            val experimental = if (line.startsWith("@Experimental")) {
+                                listOf(line.substringAfter("@").substringBefore("(").trim())
+                            } else {
+                                emptyList()
+                            }
+                            val allExperimentalClasses =
+                                (optIns + experimental)
+                                    .map { it.removeSuffix("::class") }
+                                    .map { annotation ->
+                                        // suche imports um vollen namen der annotations zu bekommen
+                                        val matchingImport =
+                                            allImports.find { it.endsWith(".$annotation") }
+                                        matchingImport ?: annotation
+                                    }.distinct()
 
-                        allExperimentalClasses.forEach {
-                            if (!ignoreExperimentalAnnoation(it)) {
-                                if (experimentalAnnotations.containsKey(it)) {
-                                    experimentalAnnotations[it] = experimentalAnnotations[it]!! + 1
-                                } else {
-                                    experimentalAnnotations[it] = 1
+                            allExperimentalClasses.forEach {
+                                if (!ignoreExperimentalAnnoation(it)) {
+                                    if (experimentalAnnotations.containsKey(it)) {
+                                        experimentalAnnotations[it] =
+                                            experimentalAnnotations[it]!! + 1
+                                    } else {
+                                        experimentalAnnotations[it] = 1
+                                    }
                                 }
                             }
                         }
-                    }
 
+                    if (experimentalAnnotations.isNotEmpty()) {
+                        println("Found experimental annotations in file ${it.relativeTo(rootDir)}:")
+                        experimentalAnnotations.forEach { println("- $it") }
+                    }
+                }
+
+            // 3) create header replacement
+            val imageMavenCentral = ReadmeDefaults.imageMavenCentral(libraryConfig)
+            val imageAPI = ReadmeDefaults.imageAPI(minSdk)
+            val imageKotlin = ReadmeDefaults.imageKotlin(config, libraryConfig)
+            val imageKMP = ReadmeDefaults.imageKMP()
+            //val imageLicence = ReadmeDefaults.imageLicence(config, libraryConfig)
+
+            val headerLine1 = "$imageMavenCentral $imageAPI $imageKotlin $imageKMP"// $imageLicence"
+            val headerLine2 = "# ${libraryConfig.library.name}"
+            val headerLine3 = listOfNotNull(
+                ReadmeDefaults.ImageSupportedPlatforms,
+                if (isAndroidSupported) ReadmeDefaults.ImageAndroid else null,
+                if (isIosSupported) ReadmeDefaults.ImageIOS else null,
+                if (isWindowsSupported) ReadmeDefaults.ImageWindows else null,
+                if (isMacOsSupported) ReadmeDefaults.ImageMacOS else null,
+                if (isLinuxSupported) ReadmeDefaults.ImageLinux else null,
+                if (isWasmSupported) ReadmeDefaults.ImageWASM else null,
+                if (isJsSupported) ReadmeDefaults.ImageJS else null,
+            )
+                .joinToString(" ")
+            val header = listOf(
+                headerLine1,
+                headerLine2,
+                headerLine3
+            ).joinToString("\n")
+
+            // 4) create supported platforms table
+            val supportedPlatformsTable = buildString {
+                val header = listOf("Module") + allSupportedPlatforms
+                appendLine("| " + header.joinToString(" | ") + " |")
+                appendLine("|" + header.joinToString("|") { "---" } + "|")
+                for ((module, platforms) in supportedPlatforms) {
+                    val row =
+                        listOf(module.artifactId) + allSupportedPlatformsLowercase.map { platform ->
+                            if (platforms.map { it.lowercase() }
+                                    .contains(platform.lowercase())) "✅" else "❌"
+                        }
+                    appendLine("| " + row.joinToString(" | ") + " |")
+                }
+            }
+            val versionsTable = buildString {
+                val header = listOf("Dependency", "Version")
+                appendLine("| " + header.joinToString(" | ") + " |")
+                appendLine("|" + header.joinToString("|") { "---" } + "|")
+
+                // kotlin
+                val kotlinVersion = readTOMLProperty(fileLibsVersionToml, "versions", "kotlin")
+
+                // org.jetbrains.compose
+                val jetbrainsCompose =
+                    tryReadTOMLProperty(fileLibsVersionToml, "versions", "jetbrains-compose")
+                val jetbrainsComposeMaterial3 =
+                    tryReadTOMLProperty(
+                        fileLibsVersionToml,
+                        "versions",
+                        "jetbrains-compose-material3"
+                    )
+
+                appendLine("| Kotlin | `$kotlinVersion` |")
+                if (jetbrainsCompose != null)
+                    appendLine("| Jetbrains Compose | `$jetbrainsCompose` |")
+                if (jetbrainsComposeMaterial3 != null)
+                    appendLine("| Jetbrains Compose Material3 | `$jetbrainsComposeMaterial3` |")
+            }
+            val experimentalInfo = buildString {
                 if (experimentalAnnotations.isNotEmpty()) {
-                    println("Found experimental annotations in file ${it.relativeTo(rootDir)}:")
-                    experimentalAnnotations.forEach { println("- $it") }
-                }
-            }
-
-        // 3) create header replacement
-        val imageMavenCentral = ReadmeDefaults.imageMavenCentral(libraryConfig)
-        val imageAPI = ReadmeDefaults.imageAPI(minSdk)
-        val imageKotlin = ReadmeDefaults.imageKotlin(config, libraryConfig)
-        val imageKMP = ReadmeDefaults.imageKMP()
-        //val imageLicence = ReadmeDefaults.imageLicence(config, libraryConfig)
-
-        val headerLine1 = "$imageMavenCentral $imageAPI $imageKotlin $imageKMP"// $imageLicence"
-        val headerLine2 = "# ${libraryConfig.library.name}"
-        val headerLine3 = listOfNotNull(
-            ReadmeDefaults.ImageSupportedPlatforms,
-            if (isAndroidSupported) ReadmeDefaults.ImageAndroid else null,
-            if (isIosSupported) ReadmeDefaults.ImageIOS else null,
-            if (isWindowsSupported) ReadmeDefaults.ImageWindows else null,
-            if (isMacOsSupported) ReadmeDefaults.ImageMacOS else null,
-            if (isLinuxSupported) ReadmeDefaults.ImageLinux else null,
-            if (isWasmSupported) ReadmeDefaults.ImageWASM else null,
-            if (isJsSupported) ReadmeDefaults.ImageJS else null,
-        )
-            .joinToString(" ")
-        val header = listOf(
-            headerLine1,
-            headerLine2,
-            headerLine3
-        ).joinToString("\n")
-
-        // 4) create supported platforms table
-        val supportedPlatformsTable = buildString {
-            val header = listOf("Module") + allSupportedPlatforms
-            appendLine("| " + header.joinToString(" | ") + " |")
-            appendLine("|" + header.joinToString("|") { "---" } + "|")
-            for ((module, platforms) in supportedPlatforms) {
-                val row =
-                    listOf(module.artifactId) + allSupportedPlatformsLowercase.map { platform ->
-                        if (platforms.map { it.lowercase() }
-                                .contains(platform.lowercase())) "✅" else "❌"
+                    appendLine("> :warning: Following experimental annotations are used:")
+                    experimentalAnnotations.forEach {
+                        appendLine("> - `${it.key}` (${it.value}x)")
                     }
-                appendLine("| " + row.joinToString(" | ") + " |")
-            }
-        }
-        val versionsTable = buildString {
-            val header = listOf("Dependency", "Version")
-            appendLine("| " + header.joinToString(" | ") + " |")
-            appendLine("|" + header.joinToString("|") { "---" } + "|")
-
-            // kotlin
-            val kotlinVersion = readTOMLProperty(fileLibsVersionToml, "versions", "kotlin")
-
-            // org.jetbrains.compose
-            val jetbrainsCompose =
-                tryReadTOMLProperty(fileLibsVersionToml, "versions", "jetbrains-compose")
-            val jetbrainsComposeMaterial3 =
-                tryReadTOMLProperty(fileLibsVersionToml, "versions", "jetbrains-compose-material3")
-
-            appendLine("| Kotlin | `$kotlinVersion` |")
-            if (jetbrainsCompose != null)
-                appendLine("| Jetbrains Compose | `$jetbrainsCompose` |")
-            if (jetbrainsComposeMaterial3 != null)
-                appendLine("| Jetbrains Compose Material3 | `$jetbrainsComposeMaterial3` |")
-        }
-        val experimentalInfo = buildString {
-            if (experimentalAnnotations.isNotEmpty()) {
-                appendLine("> :warning: Following experimental annotations are used:")
-                experimentalAnnotations.forEach {
-                    appendLine("> - `${it.key}` (${it.value}x)")
+                    appendLine(">")
+                    appendLine("> I try to use as less experimental features as possible, but in this case the ones above are needed!")
                 }
-                appendLine(">")
-                appendLine("> I try to use as less experimental features as possible, but in this case the ones above are needed!")
             }
-        }
 
-        // 5) create setup instructions
-        val libraryName = libraryConfig.library.name.lowercase().replace(" ", "-")
-        val setupViaDependencies = buildString {
-            appendLine("val $libraryName = \"<LATEST-VERSION>\"")
-            appendLine()
-            for (module in modules) {
-                appendLine("implementation(\"${libraryConfig.maven.groupId}:${module.artifactId}:\${$libraryName}\")")
-            }
-        }
-
-        val setupViaVersionCatalogue1 = buildString {
-            appendLine("[versions]")
-            appendLine()
-            appendLine("$libraryName = \"<LATEST-VERSION>\"")
-            appendLine()
-            appendLine("[libraries]")
-            appendLine()
-            for (module in modules) {
-                appendLine("${libraryName}-${module.artifactId} = { module = \"${libraryConfig.maven.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
-            }
-        }
-        val setupViaVersionCatalogue2 = buildString {
-            for (module in modules) {
-                val key = "${libraryName}-${module.artifactId}".replace("-", ".")
-                appendLine("implementation(libs.$key)")
-            }
-        }
-
-        // 6) create screenshot replacement
-        val screenshots = if (folderDocumentationScreenshots.exists()) {
-            folderDocumentationScreenshots
-                .walkTopDown()
-                .filter { it.isFile }
-                .toList()
-                .map {
-                    val relativePath = it.relativeTo(rootDir).path.replace("\\", "/")
-                    "![${it.nameWithoutExtension}]($relativePath)"
+            // 5) create setup instructions
+            val libraryName = libraryConfig.library.name.lowercase().replace(" ", "-")
+            val setupViaDependencies = buildString {
+                appendLine("val $libraryName = \"<LATEST-VERSION>\"")
+                appendLine()
+                for (module in modules) {
+                    appendLine("implementation(\"${libraryConfig.maven.groupId}:${module.artifactId}:\${$libraryName}\")")
                 }
-        } else {
-            emptyList()
-        }
+            }
 
-        val demo = if (File(rootDir, "demo").exists())
-            "A full [demo](/demo) is included inside the demo module, it shows nearly every usage with working examples."
-        else ""
+            val setupViaVersionCatalogue1 = buildString {
+                appendLine("[versions]")
+                appendLine()
+                appendLine("$libraryName = \"<LATEST-VERSION>\"")
+                appendLine()
+                appendLine("[libraries]")
+                appendLine()
+                for (module in modules) {
+                    appendLine("${libraryName}-${module.artifactId} = { module = \"${libraryConfig.maven.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
+                }
+            }
+            val setupViaVersionCatalogue2 = buildString {
+                for (module in modules) {
+                    val key = "${libraryName}-${module.artifactId}".replace("-", ".")
+                    appendLine("implementation(libs.$key)")
+                }
+            }
 
-        val apiDocs = if (hasApiDocs) {
-            val link =
-                "https://${config.developer.githubUserName}.github.io/${libraryConfig.library.name}/"
-            "Check out the [API documentation]($link)."
-        } else {
-            ""
-        }
+            // 6) create screenshot replacement
+            val screenshots = if (folderDocumentationScreenshots.exists()) {
+                folderDocumentationScreenshots
+                    .walkTopDown()
+                    .filter { it.isFile }
+                    .toList()
+                    .map {
+                        val relativePath = it.relativeTo(rootDir).path.replace("\\", "/")
+                        "![${it.nameWithoutExtension}]($relativePath)"
+                    }
+            } else {
+                emptyList()
+            }
 
-        // 7) read template content
-        var readmeContent = readmeTemplate
+            val demo = if (File(rootDir, "demo").exists())
+                "A full [demo](/demo) is included inside the demo module, it shows nearly every usage with working examples."
+            else ""
 
-        // 8) replace placeholders in readme with content from markdown files (all but table of contents)
-        val replacements = listOf(
-            Placeholder("{{ header }}", header),
-            Partial(
-                "{{ partials.info }}",
-                File(rootDir, "documentation/_partials/info.md.partial")
-            ),
-            Partial(
-                "{{ partials.usage }}",
-                File(rootDir, "documentation/_partials/usage.md.partial")
-            ),
-            Placeholder("{{ modules }}", moduleLinks.joinToString("\n")),
-            Placeholder("{{ links }}", otherLinks.joinToString("\n")),
-            Placeholder("{{ supported_platforms }}", supportedPlatformsTable),
-            Placeholder("{{ versions }}", versionsTable),
-            Placeholder("{{ experimental }}", experimentalInfo),
-            Placeholder("{{ setup-via-dependencies }}", setupViaDependencies),
-            Placeholder("{{ setup-via-version-catalogue1 }}", setupViaVersionCatalogue1),
-            Placeholder("{{ setup-via-version-catalogue2 }}", setupViaVersionCatalogue2),
-            Placeholder("{{ screenshots }}", screenshots.joinToString("\n")),
-            Placeholder("{{ other-libraries }}", ReadmeDefaults.GithubMyLibrariesLink),
-            Placeholder("{{ demo }}", demo),
-            Placeholder("{{ api-docs }}", apiDocs),
-        )
-        for (replacement in replacements) {
-            readmeContent = replacement.replace(readmeContent)
-        }
+            val apiDocs = if (hasApiDocs) {
+                val link =
+                    "https://${config.developer.githubUserName}.github.io/${libraryConfig.library.name}/"
+                "Check out the [API documentation]($link)."
+            } else {
+                ""
+            }
 
-        // 9) remove headers (lines starting with #) without content after them until the next header
-        // logik neu: falls 2 aufeinanderfolgende header aus ReadmeDefaults.allHeaders ohne content dazwischen existieren (nur whitespaces, leere zeilen),
-        // dann wird der header ohne content entfernt
-        val allMarkdownHeaders = ReadmeDefaults.allHeaders.map { it.markdownHeader() }
-        var lastFoundHeaderIndexWithoutContentBelow = -1
-        val lines = readmeContent.lines().toMutableList()
-        var i = 0
-        while (i < lines.size) {
-            val line = lines[i]
-            val trimmedLine = line.trim()
-            val headerIndex = allMarkdownHeaders.indexOf(trimmedLine)
+            // 7) read template content
+            var readmeContent = readmeTemplate
 
-            if (headerIndex != -1) {
-                if (lastFoundHeaderIndexWithoutContentBelow != -1 && lastFoundHeaderIndexWithoutContentBelow == headerIndex - 1) {
-                    // der letzte header hatte keinen content darunter und ist direkt vor dem aktuellen header
-                    // also entferne den letzten header aus cleanedLines
-                    for (j in lines.size - 1 downTo 0) {
-                        if (lines[j].trim() == allMarkdownHeaders[lastFoundHeaderIndexWithoutContentBelow]) {
-                            lines.removeAt(j)
-                            break
+            // 8) replace placeholders in readme with content from markdown files (all but table of contents)
+            val replacements = listOf(
+                Placeholder("{{ header }}", header),
+                Partial(
+                    "{{ partials.info }}",
+                    File(rootDir, "documentation/_partials/info.md.partial")
+                ),
+                Partial(
+                    "{{ partials.usage }}",
+                    File(rootDir, "documentation/_partials/usage.md.partial")
+                ),
+                Placeholder("{{ modules }}", moduleLinks.joinToString("\n")),
+                Placeholder("{{ links }}", otherLinks.joinToString("\n")),
+                Placeholder("{{ supported_platforms }}", supportedPlatformsTable),
+                Placeholder("{{ versions }}", versionsTable),
+                Placeholder("{{ experimental }}", experimentalInfo),
+                Placeholder("{{ setup-via-dependencies }}", setupViaDependencies),
+                Placeholder("{{ setup-via-version-catalogue1 }}", setupViaVersionCatalogue1),
+                Placeholder("{{ setup-via-version-catalogue2 }}", setupViaVersionCatalogue2),
+                Placeholder("{{ screenshots }}", screenshots.joinToString("\n")),
+                Placeholder("{{ other-libraries }}", ReadmeDefaults.GithubMyLibrariesLink),
+                Placeholder("{{ demo }}", demo),
+                Placeholder("{{ api-docs }}", apiDocs),
+            )
+            for (replacement in replacements) {
+                readmeContent = replacement.replace(readmeContent)
+            }
+
+            // 9) remove headers (lines starting with #) without content after them until the next header
+            // logik neu: falls 2 aufeinanderfolgende header aus ReadmeDefaults.allHeaders ohne content dazwischen existieren (nur whitespaces, leere zeilen),
+            // dann wird der header ohne content entfernt
+            val allMarkdownHeaders = ReadmeDefaults.allHeaders.map { it.markdownHeader() }
+            var lastFoundHeaderIndexWithoutContentBelow = -1
+            val lines = readmeContent.lines().toMutableList()
+            var i = 0
+            while (i < lines.size) {
+                val line = lines[i]
+                val trimmedLine = line.trim()
+                val headerIndex = allMarkdownHeaders.indexOf(trimmedLine)
+
+                if (headerIndex != -1) {
+                    if (lastFoundHeaderIndexWithoutContentBelow != -1 && lastFoundHeaderIndexWithoutContentBelow == headerIndex - 1) {
+                        // der letzte header hatte keinen content darunter und ist direkt vor dem aktuellen header
+                        // also entferne den letzten header aus cleanedLines
+                        for (j in lines.size - 1 downTo 0) {
+                            if (lines[j].trim() == allMarkdownHeaders[lastFoundHeaderIndexWithoutContentBelow]) {
+                                lines.removeAt(j)
+                                break
+                            }
                         }
                     }
-                }
-                lastFoundHeaderIndexWithoutContentBelow = headerIndex
-            } else {
-                if (trimmedLine.isEmpty()) {
-                    // leere Zeile
+                    lastFoundHeaderIndexWithoutContentBelow = headerIndex
                 } else {
-                    // nicht leere Zeile - aktueller header hat content darunter
-                    lastFoundHeaderIndexWithoutContentBelow = -1
+                    if (trimmedLine.isEmpty()) {
+                        // leere Zeile
+                    } else {
+                        // nicht leere Zeile - aktueller header hat content darunter
+                        lastFoundHeaderIndexWithoutContentBelow = -1
+                    }
+                }
+                i++
+            }
+            readmeContent = lines.joinToString("\n")
+
+            // 10)  replacement - table of content
+            val tableOfContent = ReadmeDefaults.allHeaders
+                .filter { it != ReadmeDefaults.headerTableOfContent }
+                .filter {
+                    val header = it.markdownHeader()
+                    if (readmeContent.contains(header)) {
+                        true
+                    } else {
+                        false
+                    }
+                }.joinToString("\n") { "- ${it.markdownLink()}" }
+            readmeContent =
+                Placeholder("{{ tableOfContent }}", tableOfContent).replace(readmeContent)
+
+            // 11) remove multiple trimmed empty lines => max is 1 empty line
+            val finalLines = mutableListOf<String>()
+            var lastLineEmpty = false
+            for (line in readmeContent.lines()) {
+                if (line.isBlank()) {
+                    if (!lastLineEmpty) {
+                        finalLines.add("")
+                        lastLineEmpty = true
+                    }
+                } else {
+                    finalLines.add(line)
+                    lastLineEmpty = false
                 }
             }
-            i++
+            readmeContent = finalLines.joinToString("\n")
+
+            // 12) write updated readme content to README.md
+            fileReadme.writeText(readmeContent)
         }
-        readmeContent = lines.joinToString("\n")
-
-        // 10)  replacement - table of content
-        val tableOfContent = ReadmeDefaults.allHeaders
-            .filter { it != ReadmeDefaults.headerTableOfContent }
-            .filter {
-                val header = it.markdownHeader()
-                if (readmeContent.contains(header)) {
-                    true
-                } else {
-                    false
-                }
-            }.joinToString("\n") { "- ${it.markdownLink()}" }
-        readmeContent = Placeholder("{{ tableOfContent }}", tableOfContent).replace(readmeContent)
-
-        // 11) remove multiple trimmed empty lines => max is 1 empty line
-        val finalLines = mutableListOf<String>()
-        var lastLineEmpty = false
-        for (line in readmeContent.lines()) {
-            if (line.isBlank()) {
-                if (!lastLineEmpty) {
-                    finalLines.add("")
-                    lastLineEmpty = true
-                }
-            } else {
-                finalLines.add(line)
-                lastLineEmpty = false
-            }
-        }
-        readmeContent = finalLines.joinToString("\n")
-
-        // 12) write updated readme content to README.md
-        fileReadme.writeText(readmeContent)
 
         println("")
-        println("#####################################")
-        println("###   END updateMarkdownFiles     ###")
-        println("#####################################")
+        println("##############################")
+        println("### END Updating README.md ###")
+        println("##############################")
     }
 
     /**

@@ -10,6 +10,7 @@ import java.io.File
 data class Config(
     @SerialName("java-version") val javaVersion: String,
     val developer: Developer,
+    @SerialName("update-readme") val updateReadme: Boolean = true
 ) {
     companion object {
 
