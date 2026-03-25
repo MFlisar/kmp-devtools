@@ -25,9 +25,11 @@ import javax.inject.Inject
 abstract class BuildFilePluginExtension @Inject constructor(objects: ObjectFactory) {
 
     abstract val excludeDemoFromCI: Property<Boolean>
+    abstract val buildReadme: Property<Boolean>
 
     init {
         excludeDemoFromCI.convention(true)
+        buildReadme.convention(true)
     }
 }
 
@@ -52,7 +54,10 @@ class BuildFilePlugin : Plugin<Project> {
 
         // 3) register tasks
         if (project == project.rootProject) {
-            project.tasks.register("updateMarkdownFiles", UpdateMarkdownFilesTask::class.java)
+            if (ext.buildReadme.get())
+                project.tasks.register("updateMarkdownFiles", UpdateMarkdownFilesTask::class.java)
+            else
+                project.tasks.register("updateMarkdownFiles", EmptyUpdateMarkdownFilesTask::class.java)
             project.tasks.register("macActions", MacActionsTask::class.java)
             project.tasks.register("renameProject", RenameProjectTask::class.java)
             project.tasks.register("updateDevToolsVersion", UpdateDevToolsVersionTask::class.java)
@@ -122,6 +127,14 @@ abstract class UpdateMarkdownFilesTask : ConfigDependentTask() {
             folderScreenshots = folderScreenshots.get(),
             hasApiDocs = hasApiDocs.get().toBoolean()
         )
+    }
+}
+
+abstract class EmptyUpdateMarkdownFilesTask: ConfigDependentTask() {
+
+    @TaskAction
+    fun run() {
+        println("Updating README.md disabled!")
     }
 }
 

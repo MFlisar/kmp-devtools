@@ -9,8 +9,7 @@ import java.io.File
 @Serializable
 data class Config(
     @SerialName("java-version") val javaVersion: String,
-    val developer: Developer,
-    @SerialName("update-readme") val updateReadme: Boolean = true
+    val developer: Developer
 ) {
     companion object {
 
