@@ -108,7 +108,8 @@ object ProjectActions {
         val workflowsDir = File(root, ".github/workflows")
         workflowsDir.listFiles { f -> f.extension == "yml" }?.forEach { ymlFile ->
             val text = ymlFile.readText()
-            val regex = Regex("""uses:\s*MFlisar/kmp-devtools/.github/workflows/(kmp-devtools-[\w\-]+\.yml)@(\d+\.\d+\.\d+)""")
+            // regex: nach dem @ kann auch ein text stehen
+            val regex = Regex("""uses:\s*MFlisar/kmp-devtools/.github/workflows/(kmp-devtools-[\w\-]+\.yml)@([^\s]+)""")
             val newText = regex.replace(text) { matchResult ->
                 val fileName = matchResult.groupValues[1]
                 "uses: MFlisar/kmp-devtools/.github/workflows/$fileName@$newVersion"
