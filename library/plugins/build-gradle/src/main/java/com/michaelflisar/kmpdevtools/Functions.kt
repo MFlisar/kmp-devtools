@@ -54,18 +54,19 @@ class SourceSetPlatformDsl internal constructor(
             // alle dependencies der platform suchen
             val platformDependencies = dependencies[platform].orEmpty()
 
-            // alle default source sets der platform von den custom source sets der platform abhängig machen
+            // 1) alle default source sets der platform von den custom source sets der platform abhängig machen
+            // bspw. [iosX64Main, iosArm64Main, iosSimulatorArm64Main] sollten von [iosMain] abhängig sein
             if (log)
-                println("- ${defaultPlatformSourceSets.joinToStringOrEmpty { it.name }} has following custom source sets: ${customPlatformSourceSets.joinToStringOrEmpty { it.name }}")
+                println("- custom source sets: ${customPlatformSourceSets.joinToStringOrEmpty { it.name }}")
             defaultPlatformSourceSets.forEach { defaultPlatformSourceSet ->
                 customPlatformSourceSets.forEach { customPlatformSourceSet ->
-                    customPlatformSourceSet.dependsOn(defaultPlatformSourceSet)
+                    defaultPlatformSourceSet.dependsOn(customPlatformSourceSet)
                 }
             }
 
-            // alle source sets der platform mit allen dependencies verbinden
+            // 2) alle source sets der platform mit allen dependencies verbinden
             if (log)
-                println("- ${allPlatformSourceSets.joinToStringOrEmpty { it.name }} depend on following source sets: ${platformDependencies.joinToStringOrEmpty { it.name }}")
+                println("- dependency source sets: ${platformDependencies.joinToStringOrEmpty { it.name }}")
             allPlatformSourceSets.forEach { sourceSet ->
                 platformDependencies.forEach { dependency ->
                     sourceSet.dependsOn(dependency)
