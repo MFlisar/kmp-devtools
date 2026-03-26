@@ -1,9 +1,11 @@
 package com.michaelflisar.kmpdevtools
 
+import com.michaelflisar.kmpdevtools.core.Platform
 import org.gradle.api.Project
 import org.gradle.api.artifacts.DependencySubstitutions
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
 import org.gradle.api.provider.Provider
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 
 /**
  * usage:

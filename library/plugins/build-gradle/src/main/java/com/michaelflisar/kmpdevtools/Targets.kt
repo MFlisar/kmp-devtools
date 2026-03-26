@@ -37,7 +37,7 @@ class Targets(
     val wasm: Boolean = false,
     val js: Boolean = false,
 ) {
-    private val enabledPlatforms = Platform.entries
+    val platforms = Platform.entries
         .filter {
             when (it) {
                 Platform.ANDROID -> android
@@ -50,12 +50,13 @@ class Targets(
             }
         }
 
-    fun isEnabled(target: Platform) = enabledPlatforms.contains(target)
+    fun isEnabled(target: Platform) = platforms.contains(target)
 
     fun getPlatforms(exclusions: List<Platform>): List<Platform> {
-        return enabledPlatforms.filter { !exclusions.contains(it) }
+        return platforms.filter { !exclusions.contains(it) }
     }
 
+    @Deprecated("Use setupDependencies instead")
     fun setupDependencies(
         sourceSet: KotlinSourceSet,
         sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
@@ -69,7 +70,9 @@ class Targets(
         }
         targets.filter { isEnabled(it) }.forEach { target ->
             target.targets.forEach {
-                sourceSets.getByName("${it}Main").dependsOn(sourceSet)
+                val name = "${it}Main"
+                //println("Setting up dependencies for source set '${sourceSet.name}' on target '$target' (depends on '$name')")
+                sourceSets.getByName(name).dependsOn(sourceSet)
             }
         }
     }
