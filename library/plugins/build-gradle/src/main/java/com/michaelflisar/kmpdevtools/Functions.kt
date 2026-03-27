@@ -4,13 +4,6 @@ import com.michaelflisar.kmpdevtools.core.Platform
 import org.gradle.api.NamedDomainObjectContainer
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 
-private sealed class Dependency {
-    data class SourceSetDependency(val sourceSet: KotlinSourceSet, val platform: Platform) :
-        Dependency()
-
-    data class Custom(val sourceSet: KotlinSourceSet) : Dependency()
-}
-
 class SourceSetPlatformDsl internal constructor(
     private val buildTargets: Targets,
     private val sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
@@ -34,7 +27,7 @@ class SourceSetPlatformDsl internal constructor(
     infix fun KotlinSourceSet.supportedBy(platform: Platform) = supportedBy(listOf(platform))
 
     operator fun List<Platform>.not(): List<Platform> {
-        return buildTargets.getPlatforms(this)
+        return buildTargets.platforms.filter { !this.contains(it) }
     }
 
     operator fun Platform.not() = !listOf(this)

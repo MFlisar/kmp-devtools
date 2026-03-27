@@ -12,12 +12,10 @@ import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
 import org.gradle.api.JavaVersion
-import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithHostTests
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithSimulatorTests
@@ -51,31 +49,6 @@ class Targets(
         }
 
     fun isEnabled(target: Platform) = platforms.contains(target)
-
-    fun getPlatforms(exclusions: List<Platform>): List<Platform> {
-        return platforms.filter { !exclusions.contains(it) }
-    }
-
-    @Deprecated("Use setupDependencies instead")
-    fun setupDependencies(
-        sourceSet: KotlinSourceSet,
-        sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
-        platforms: List<Platform>,
-        platformsNotSupported: Boolean = false,
-    ) {
-        val targets = if (platformsNotSupported) {
-            getPlatforms(exclusions = platforms)
-        } else {
-            platforms
-        }
-        targets.filter { isEnabled(it) }.forEach { target ->
-            target.targets.forEach {
-                val name = "${it}Main"
-                //println("Setting up dependencies for source set '${sourceSet.name}' on target '$target' (depends on '$name')")
-                sourceSets.getByName(name).dependsOn(sourceSet)
-            }
-        }
-    }
 
     fun setupTargetsLibrary(
         project: Project,
@@ -317,8 +290,6 @@ class Targets(
 
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
             if (iOS) {
-
-
                 listOf(
                     iosX64(),
                     iosArm64(),
@@ -385,9 +356,6 @@ class Targets(
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
             if (macOS) {
-                macosX64 {
-                    configure()
-                }
                 macosArm64 {
                     configure()
                 }
@@ -492,6 +460,4 @@ class Targets(
             }
         }
     }
-
-
 }
