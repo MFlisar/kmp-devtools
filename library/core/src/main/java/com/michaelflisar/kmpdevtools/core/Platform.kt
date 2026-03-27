@@ -51,5 +51,12 @@ enum class Platform(
          * not supported: [WASM], [JS]
          */
         val LIST_FILE_SUPPORT = listOf(ANDROID, WINDOWS, IOS, MACOS, LINUX)
+
+        /**
+         * Targets: [WINDOWS], [ANDROID]
+         *
+         * not supported: [MACOS], [LINUX], [IOS], [WASM], [JS]
+         */
+        val LIST_JAVA = listOf(WINDOWS, ANDROID)
     }
 }
