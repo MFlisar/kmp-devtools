@@ -17,6 +17,12 @@ class SourceSetPlatformDsl internal constructor(
         }
     }
 
+    infix fun List<Platform>.addSourceSet(sourceSet: KotlinSourceSet) {
+        forEach {
+            it.addSourceSet(sourceSet)
+        }
+    }
+
     infix fun KotlinSourceSet.supportedBy(platforms: List<Platform>) {
         platforms.forEach { platform ->
             if (buildTargets.isEnabled(platform))
