@@ -1,60 +1,17 @@
 package com.michaelflisar.kmpdevtools.core.utils
 
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
-import org.gradle.api.Project
 import java.io.File
-import java.util.Properties
 
 class ProjectData(
+    val packageNameFrom: String,
+    val libraryNameFrom: String,
     val packageNameTo: String,
     val libraryNameTo: String,
-    val pathStateFile: String = "configs/state.properties",
     val pathRunConfigFolders: String = ".run",
     val root: File = File(System.getProperty("user.dir")),
 ) {
-    constructor(
-        projectRootDirectory: File,
-        libraryConfig: LibraryConfig,
-        pathStateFile: String = "configs/state.properties",
-        pathRunConfigFolders: String = ".run",
-    ) : this(
-        packageNameTo = libraryConfig.library.namespace,
-        libraryNameTo = libraryConfig.library.name,
-        pathStateFile = pathStateFile,
-        pathRunConfigFolders = pathRunConfigFolders,
-        root = projectRootDirectory,
-    )
-
-    constructor(
-        project: Project,
-        libraryConfig: LibraryConfig = LibraryConfig.read(project),
-        pathStateFile: String = "configs/state.properties",
-        pathRunConfigFolders: String = ".run",
-        root: File = project.rootDir
-    ) : this(
-        packageNameTo = libraryConfig.library.namespace,
-        libraryNameTo = libraryConfig.library.name,
-        pathStateFile = pathStateFile,
-        pathRunConfigFolders = pathRunConfigFolders,
-        root = root,
-    )
-
-    val fileStateProperties = File(root, pathStateFile)
-    val state = Properties().apply {
-        fileStateProperties.inputStream().use { load(it) }
-    }
-
-    val packageNameFrom = state.getProperty("packageNameFrom")!!
-    val libraryNameFrom = state.getProperty("libraryNameFrom")!!
-
     val fromPath = packageNameFrom.replace('.', File.separatorChar)
     val toPath = packageNameTo.replace('.', File.separatorChar)
-
-    fun updateStateFile() {
-        state.setProperty("packageNameFrom", packageNameTo)
-        state.setProperty("libraryNameFrom", libraryNameTo)
-        fileStateProperties.outputStream().use { state.store(it, null) }
-    }
 
     /**
      * Updates the content of the given file by replacing occurrences of the old package name and library name
@@ -96,7 +53,6 @@ class ProjectData(
             "Package Name To" to packageNameTo,
             "Library Name From" to libraryNameFrom,
             "Library Name To" to libraryNameTo,
-            "Path State File" to pathStateFile,
             "Path Run Config Folders" to pathRunConfigFolders,
         )
     }

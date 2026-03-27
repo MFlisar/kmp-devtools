@@ -22,18 +22,18 @@ import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.TaskAction
 import javax.inject.Inject
 
-abstract class BuildFilePluginExtension @Inject constructor(objects: ObjectFactory) {
-
-    //abstract val excludeDemoFromCI: Property<Boolean>
-    //abstract val buildReadme: Property<Boolean>
-    //abstract val targets: Property<Targets>
-
-    init {
-        //excludeDemoFromCI.convention(true)
-        //buildReadme.convention(true)
-        //targets.convention(Targets())
-    }
-}
+//abstract class BuildFilePluginExtension @Inject constructor(objects: ObjectFactory) {
+//
+//    //abstract val excludeDemoFromCI: Property<Boolean>
+//    //abstract val buildReadme: Property<Boolean>
+//    //abstract val targets: Property<Targets>
+//
+//    init {
+//        //excludeDemoFromCI.convention(true)
+//        //buildReadme.convention(true)
+//        //targets.convention(Targets())
+//    }
+//}
 
 class BuildFilePlugin : Plugin<Project> {
 
@@ -43,7 +43,7 @@ class BuildFilePlugin : Plugin<Project> {
 
         this.project = project
 
-        val ext = project.extensions.create("buildFilePlugin", BuildFilePluginExtension::class.java)
+        //val ext = project.extensions.create("buildFilePlugin", BuildFilePluginExtension::class.java)
 
         // 3) register tasks
         if (project == project.rootProject) {
@@ -142,9 +142,7 @@ abstract class RenameProjectTask : ConfigDependentTask() {
 
     @TaskAction
     fun run() {
-        val libraryConfig = LibraryConfig.readFromProject(rootDirectory.get().asFile)
-        val data = ProjectData(rootDirectory.get().asFile, libraryConfig)
-        ProjectActions.runProjectRenamer(data)
+        ProjectActions.runProjectRenamer()
     }
 }
 

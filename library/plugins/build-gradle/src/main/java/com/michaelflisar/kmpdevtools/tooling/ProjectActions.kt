@@ -7,15 +7,28 @@ import com.michaelflisar.kmpdevtools.core.utils.ProjectRenamer
 import com.michaelflisar.kmpdevtools.core.utils.ScriptStep
 import com.michaelflisar.kmpdevtools.core.utils.ScriptUtil
 import java.io.File
+import kotlin.String
 
 object ProjectActions {
 
-    fun runProjectRenamer(
-        data: ProjectData,
-    ) {
+    fun runProjectRenamer() {
+
         val rootDir = File(System.getProperty("user.dir"))
         val config = Config.readFromProject(rootDir)
         val libraryConfig = LibraryConfig.readFromProject(rootDir)
+
+        val currentPackageName = libraryConfig.library.namespace
+        val currentLibraryName = libraryConfig.library.name
+
+        val packageNameTo = readUserInput("New package name / namespace (current: $currentPackageName): ")
+        val libraryNameTo = readUserInput("New library name (current: $currentLibraryName): ")
+
+        val data = ProjectData(
+            packageNameFrom = currentPackageName,
+            libraryNameFrom = currentLibraryName,
+            packageNameTo = packageNameTo,
+            libraryNameTo = libraryNameTo
+        )
 
         val steps = listOf(
             ScriptStep("Rename Package Names") {
@@ -47,10 +60,6 @@ object ProjectActions {
                     data.updateFile(fileProject, replacePackageName = true)
 
                 }
-            },
-            ScriptStep("Save State") {
-                // writes the new package and library names to the state file
-                data.updateStateFile()
             }
         )
 
@@ -67,12 +76,7 @@ object ProjectActions {
         root: File,
     ) {
         // user input holen
-        println("Neue kmp-devtools version: ")
-        val newVersion = readLine()?.trim().orEmpty()
-        if (newVersion.isEmpty()) {
-            println("Aborted: No version provided.")
-            return
-        }
+        val newVersion = readUserInput("Neue kmp-devtools version: ")
 
         fun replaceInFile(file: File, regex: Regex, replacement: String) {
             val text = file.readText()
@@ -119,5 +123,15 @@ object ProjectActions {
                 println("Updated: ${ymlFile.path}")
             }
         }
+    }
+
+    private fun readUserInput(prompt: String, forceNotEmpty: Boolean = true): String {
+        println(prompt)
+        val input = readlnOrNull()?.trim().orEmpty()
+        if (input.isEmpty() && forceNotEmpty) {
+            println("Aborted: Input empty!")
+            throw RuntimeException("Input empty")
+        }
+        return input
     }
 }
