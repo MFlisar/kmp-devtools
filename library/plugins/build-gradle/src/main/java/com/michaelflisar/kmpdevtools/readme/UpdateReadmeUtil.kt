@@ -165,7 +165,11 @@ object UpdateReadmeUtil {
                         }
 
                         val allInfos = optInInfos + experimentalInfos
-                        experimentalAnnotationsInFile = ExperimentalAnnotationInfo.combine(experimentalAnnotationsInFile, allInfos)
+                        experimentalAnnotationsInFile = ExperimentalAnnotationInfo.combine(
+                            experimentalAnnotationsInFile,
+                            allInfos
+                        )
+                            .filter { !ignoreExperimentalAnnoation(it.name) }
                     }
 
                 if (experimentalAnnotationsInFile.isNotEmpty()) {
@@ -173,7 +177,10 @@ object UpdateReadmeUtil {
                     experimentalAnnotationsInFile.forEach { println("- $it") }
                 }
 
-                experimentalAnnotations = ExperimentalAnnotationInfo.combine(experimentalAnnotations, experimentalAnnotationsInFile).sorted()
+                experimentalAnnotations = ExperimentalAnnotationInfo.combine(
+                    experimentalAnnotations,
+                    experimentalAnnotationsInFile
+                ).sorted()
             }
 
         // 3) create header replacement
@@ -284,18 +291,59 @@ object UpdateReadmeUtil {
         }
 
         // 6) create screenshot replacement
+
         val screenshots = if (folderDocumentationScreenshots.exists()) {
-            folderDocumentationScreenshots
+            val excludedScreenshots = mutableListOf<File>()
+            val result = folderDocumentationScreenshots
                 .walkTopDown()
                 .filter { it.isFile }
                 .toList()
-                .map {
-                    val relativePath = it.relativeTo(rootDir).path.replace("\\", "/")
-                    "![${it.nameWithoutExtension}]($relativePath)"
+                .filter {
+                    val relativeFileInScreenshotsFolder =
+                        it.relativeTo(folderDocumentationScreenshots)
+                    val topFolderName =
+                        relativeFileInScreenshotsFolder.invariantSeparatorsPath.substringBefore("/")
+                    val exclude =
+                        if (config.readme.screenshots.excludeRoot && it.parentFile == folderDocumentationScreenshots)
+                            true
+                        else if (config.readme.screenshots.excludedFolders.contains(topFolderName))
+                            true
+                        else if (config.readme.screenshots.excludedImages.contains(it.nameWithoutExtension))
+                            true
+                        else
+                            false
+                    if (exclude)
+                        excludedScreenshots += it
+                    !exclude
                 }
+                .map {
+                    Screenshot(it, rootDir, folderDocumentationScreenshots)
+                }
+            if (excludedScreenshots.isNotEmpty()) {
+                println("")
+                println("Following screenshots are excluded from README based on the configuration:")
+                excludedScreenshots.forEach {
+                    println("- ${it.relativeTo(rootDir)}")
+                }
+            }
+            result.sortedBy { it.relativeFile.invariantSeparatorsPath.lowercase() }
         } else {
             emptyList()
         }
+        val screenshotsTable = if (config.readme.screenshots.groupByFolders) {
+            val grouped = screenshots.groupBy { it.topFolderName() }.toSortedMap()
+            println("")
+            println("Building screenshots table with folder grouping. Found the following folders:")
+            grouped.map { (key, screenshots) ->
+                println("- folder '$key' with ${screenshots.size} screenshots")
+                val table = buildMarkdownTable(null, screenshots, 3) { it.markdownImage }
+                if (key.isEmpty())
+                    table
+                else
+                    "### ${key}\n\n" + table
+            }.joinToString("\n")
+        } else
+            buildMarkdownTable(null, screenshots, 3) { it.markdownImage }
 
         val demo = if (File(rootDir, "demo").exists())
             "A full [demo](/demo) is included inside the demo module, it shows nearly every usage with working examples."
@@ -331,7 +379,7 @@ object UpdateReadmeUtil {
             Placeholder("{{ setup-via-dependencies }}", setupViaDependencies),
             Placeholder("{{ setup-via-version-catalogue1 }}", setupViaVersionCatalogue1),
             Placeholder("{{ setup-via-version-catalogue2 }}", setupViaVersionCatalogue2),
-            Placeholder("{{ screenshots }}", screenshots.joinToString("\n")),
+            Placeholder("{{ screenshots }}", screenshotsTable),
             Placeholder("{{ other-libraries }}", ReadmeDefaults.GithubMyLibrariesLink),
             Placeholder("{{ demo }}", demo),
             Placeholder("{{ api-docs }}", apiDocs),
@@ -524,7 +572,7 @@ object UpdateReadmeUtil {
         return platforms
     }
 
-    fun buildMarkdownLinks(folders: List<FolderLink>): List<String> {
+    private fun buildMarkdownLinks(folders: List<FolderLink>): List<String> {
         fun build(folderLinks: List<FolderLink>, indent: String = ""): List<String> {
             return folderLinks.sortedBy { it.name }.flatMap { folder ->
                 val lines = mutableListOf<String>()
@@ -589,6 +637,30 @@ object UpdateReadmeUtil {
         return link.replace(" ", "%20")
     }
 
+    private fun <T> buildMarkdownTable(
+        headers: List<String>?,
+        items: List<T>,
+        columns: Int,
+        itemToCell: (item: T) -> String,
+    ): String {
+        val rows = items.chunked(columns)
+        val table = StringBuilder()
+        if (rows.isNotEmpty()) {
+            if (headers != null) {
+                table.append("| " + headers.joinToString(" | ") + " |\n")
+                table.append("|" + headers.joinToString("|") { "---" } + "|\n")
+            } else {
+                val emptyHeaders = List(columns) { "" }
+                table.append("| " + emptyHeaders.joinToString(" | ") + " |\n")
+                table.append("|" + emptyHeaders.joinToString("|") { "---" } + "|\n")
+            }
+        }
+        for (row in rows) {
+            table.append("| " + row.joinToString(" | ") { itemToCell(it) } + " |\n")
+        }
+        return table.toString()
+    }
+
     private data class ExperimentalAnnotationInfo(
         val name: String,
         val count: Int,
@@ -601,11 +673,15 @@ object UpdateReadmeUtil {
 
         companion object {
 
-            fun combine(list1: List<ExperimentalAnnotationInfo>, list2: List<ExperimentalAnnotationInfo>): List<ExperimentalAnnotationInfo> {
+            fun combine(
+                list1: List<ExperimentalAnnotationInfo>,
+                list2: List<ExperimentalAnnotationInfo>,
+            ): List<ExperimentalAnnotationInfo> {
                 val combined = mutableListOf<ExperimentalAnnotationInfo>()
                 val all = list1 + list2
                 for (info in all) {
-                    val index = combined.indexOfFirst { it.name == info.name && it.type == info.type }
+                    val index =
+                        combined.indexOfFirst { it.name == info.name && it.type == info.type }
                     if (index != -1) {
                         val existing = combined.removeAt(index)
                         combined.add(existing.copy(count = existing.count + info.count))
@@ -624,5 +700,27 @@ object UpdateReadmeUtil {
                 else -> this.name.lowercase().compareTo(other.name.lowercase())
             }
         }
+    }
+
+    private class Screenshot private constructor(
+        val relativeFile: File,
+        val relativeDocumentationFile: File,
+    ) {
+        constructor(
+            file: File,
+            rootDir: File,
+            documentationDir: File,
+        ) : this(
+            relativeFile = file.relativeTo(rootDir),
+            relativeDocumentationFile = file.relativeTo(documentationDir)
+        )
+
+        fun topFolderName(): String {
+            val parts = relativeDocumentationFile.path.replace("\\", "/").split("/")
+            return if (parts.size > 1) parts.first() else ""
+        }
+
+        val relativePath = relativeFile.path.replace("\\", "/")
+        val markdownImage = "![${relativeFile.nameWithoutExtension}]($relativePath)"
     }
 }

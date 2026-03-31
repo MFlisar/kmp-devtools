@@ -1,6 +1,5 @@
 import com.vanniktech.maven.publish.JavaLibrary
 import com.vanniktech.maven.publish.JavadocJar
-import org.gradle.kotlin.dsl.implementation
 
 plugins {
     alias(libs.plugins.kotlin.jvm)

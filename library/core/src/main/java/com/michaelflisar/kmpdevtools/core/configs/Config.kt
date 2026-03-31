@@ -9,7 +9,8 @@ import java.io.File
 @Serializable
 data class Config(
     @SerialName("java-version") val javaVersion: String,
-    val developer: Developer
+    val developer: Developer,
+    val readme: Readme
 ) {
     companion object {
 
@@ -32,5 +33,23 @@ data class Config(
         @SerialName("github-user-name") val githubUserName: String,
     )
 
+    /*
+     * readme:
+        screenshots:
+          excludeRoot: true
+           excludeFolders: [previews]
+           excludeImages: []
+     */
+    @Serializable
+    class Readme(
+        val screenshots: Screenshots
+    ) {
+        @Serializable
+        class Screenshots(
+            @SerialName("exclude-root") val excludeRoot: Boolean,
+            @SerialName("group-by-folder") val groupByFolders: Boolean,
+            @SerialName("excluded-folders") val excludedFolders: List<String>,
+            @SerialName("excluded-images") val excludedImages: List<String>,
+        )
+    }
 }
-
