@@ -10,7 +10,6 @@ import com.michaelflisar.kmpdevtools.configs.library.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.core.Platform
 import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import com.michaelflisar.kmpdevtools.core.configs.Config
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
@@ -83,7 +82,6 @@ class Targets(
     fun setupTargetsAndroidLibrary(
         project: Project,
         config: Config,
-        libraryConfig: LibraryConfig,
         androidConfig: AndroidLibraryConfig,
         androidTarget: KotlinMultiplatformAndroidLibraryTarget,
     ) {
@@ -91,7 +89,6 @@ class Targets(
             androidTarget,
             project,
             config,
-            libraryConfig,
             androidConfig,
             {}//configureAndroid
         )
@@ -127,7 +124,7 @@ class Targets(
      *
      * @param project The Gradle project to configure.
      * @param config The configuration to use for the Android target.
-     * @param libraryConfig The library configuration to use for the Android target.
+     * @param moduleConfig The module configuration to use for the Android target.
      * @param androidConfig The Android-specific configuration to use for the Android target.
      * @param configure A lambda to configure the Android target.
      */
@@ -135,7 +132,6 @@ class Targets(
         target: KotlinMultiplatformAndroidLibraryTarget,
         project: Project,
         config: Config,
-        libraryConfig: LibraryConfig,
         androidConfig: AndroidLibraryConfig,
         configure: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit) = {},
     ) {
@@ -144,7 +140,7 @@ class Targets(
             project.extensions.configure(KotlinMultiplatformExtension::class.java) {
 
                 with(target) {
-                    namespace = androidConfig.getNamespace(project, libraryConfig)
+                    namespace = androidConfig.namespace
                     compileSdk = androidConfig.compileSdk.get().toInt()
                     minSdk = androidConfig.minSdk.get().toInt()
 

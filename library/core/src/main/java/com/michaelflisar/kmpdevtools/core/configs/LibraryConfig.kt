@@ -28,6 +28,16 @@ data class LibraryConfig(
 
     fun libraryId() = library.name.lowercase()
 
+    val namespace: String
+        get() = library.namespace
+
+    fun getModuleNamespace(project: Project): String {
+        return getModuleForProject(
+            project.rootDir,
+            project.projectDir
+        ).androidNamespace(this)
+    }
+
     fun getModuleForProject(rootDir: File, projectDir: File): Module {
         val path = projectDir.relativeTo(rootDir).path
         return getModuleByPath(path)

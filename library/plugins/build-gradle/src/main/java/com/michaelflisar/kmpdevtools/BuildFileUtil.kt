@@ -13,6 +13,7 @@ import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import com.vanniktech.maven.publish.Platform
+import com.vanniktech.maven.publish.SourcesJar
 import edu.sc.seis.launch4j.tasks.Launch4jLibraryTask
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
@@ -57,7 +58,7 @@ object BuildFileUtil {
         libraryConfig: LibraryConfig,
         platform: Platform = KotlinMultiplatform(
             javadocJar = JavadocJar.Dokka("dokkaGenerateHtml"),
-            sourcesJar = true
+            sourcesJar = SourcesJar.Sources()
         ),
         autoReleaseOnMavenCentral: (version: String) -> Boolean = { true },
         sign: Boolean = System.getenv("CI")?.toBoolean() == true,
