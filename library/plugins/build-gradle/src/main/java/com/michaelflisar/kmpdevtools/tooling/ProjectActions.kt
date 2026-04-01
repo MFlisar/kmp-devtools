@@ -17,7 +17,7 @@ object ProjectActions {
         val config = Config.readFromProject(rootDir)
         val libraryConfig = LibraryConfig.readFromProject(rootDir)
 
-        val currentPackageName = libraryConfig.library.namespace
+        val currentPackageName = config.project.namespace
         val currentLibraryName = libraryConfig.library.name
 
         val packageNameTo = readUserInput("New package name / namespace (current: $currentPackageName): ")

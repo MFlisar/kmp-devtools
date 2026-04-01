@@ -7,9 +7,11 @@ import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import com.michaelflisar.kmpdevtools.configs.app.AndroidAppConfig
 import com.michaelflisar.kmpdevtools.configs.app.WasmAppConfig
 import com.michaelflisar.kmpdevtools.configs.library.AndroidLibraryConfig
+import com.michaelflisar.kmpdevtools.configs.module.AppModuleConfig
 import com.michaelflisar.kmpdevtools.core.Platform
 import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import com.michaelflisar.kmpdevtools.core.configs.Config
+import com.michaelflisar.kmpdevtools.configs.module.LibraryModuleConfig
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
@@ -50,7 +52,7 @@ class Targets(
     fun isEnabled(target: Platform) = platforms.contains(target)
 
     fun setupTargetsLibrary(
-        project: Project,
+        libraryModuleConfig: LibraryModuleConfig,
         //configureAndroid: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit) = {},
         configureIOS: (KotlinNativeTarget.() -> Unit) = {},
         configureIOSTests: (KotlinNativeTargetWithSimulatorTests.() -> Unit) = {},
@@ -71,6 +73,7 @@ class Targets(
         //        libraryModuleData.androidConfig,
         //        configureAndroid
         //    )
+        val project = libraryModuleConfig.project
         setupIOSTarget(project, configureIOS, configureIOSTests)
         setupWindowsTarget(project, configureWindows)
         setupMacOSTarget(project, configureMacOS)
@@ -80,11 +83,28 @@ class Targets(
     }
 
     fun setupTargetsAndroidLibrary(
-        project: Project,
-        config: Config,
+        libraryModuleConfig: LibraryModuleConfig,
         androidConfig: AndroidLibraryConfig,
         androidTarget: KotlinMultiplatformAndroidLibraryTarget,
     ) {
+        val project = libraryModuleConfig.project
+        val config = libraryModuleConfig.config
+        setupAndroidLibraryTarget(
+            androidTarget,
+            project,
+            config,
+            androidConfig,
+            {}//configureAndroid
+        )
+    }
+
+    fun setupTargetsAndroidLibrary(
+        appModuleConfig: AppModuleConfig,
+        androidConfig: AndroidLibraryConfig,
+        androidTarget: KotlinMultiplatformAndroidLibraryTarget,
+    ) {
+        val project = appModuleConfig.project
+        val config = appModuleConfig.config
         setupAndroidLibraryTarget(
             androidTarget,
             project,
@@ -95,7 +115,7 @@ class Targets(
     }
 
     fun setupTargetsApp(
-        project: Project,
+        appModuleConfig: AppModuleConfig,
         //configureAndroid: (KotlinAndroidTarget.() -> Unit) = {},
         wasmAppConfig: WasmAppConfig? = null,
         configureIOS: (KotlinNativeTarget.() -> Unit) = {},
@@ -109,6 +129,7 @@ class Targets(
         if (wasmAppConfig == null && wasm) {
             throw IllegalArgumentException("wasmConfig must be provided when Wasm target is enabled")
         }
+        val project = appModuleConfig.project
         //setupAndroidAppTarget(appModuleData.project, appModuleData.config, configureAndroid)
         setupIOSTarget(project, configureIOS, configureIOSTests)
         setupWindowsTarget(project, configureWindows)
@@ -122,9 +143,9 @@ class Targets(
     /**
      * Config Android library target in the given project with the given configuration.
      *
+     * @param target The Android library target to configure.
      * @param project The Gradle project to configure.
      * @param config The configuration to use for the Android target.
-     * @param moduleConfig The module configuration to use for the Android target.
      * @param androidConfig The Android-specific configuration to use for the Android target.
      * @param configure A lambda to configure the Android target.
      */
@@ -211,11 +232,11 @@ class Targets(
             if (android) {
                 with(extension)
                 {
-                    namespace = appConfig.packageName
+                    namespace = appConfig.namespace
                     compileSdk = androidAppConfig.compileSdk.get().toInt()
 
                     defaultConfig {
-                        applicationId = appConfig.androidAppId
+                        applicationId = appConfig.namespace
                         minSdk = androidAppConfig.minSdk.get().toInt()
                         targetSdk = androidAppConfig.targetSdk.get().toInt()
                         versionCode = appConfig.versionCode

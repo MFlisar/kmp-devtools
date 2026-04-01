@@ -1,8 +1,7 @@
 package com.michaelflisar.kmpdevtools.configs.library
 
-import com.michaelflisar.kmpdevtools.core.configs.AppConfig
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
-import org.gradle.api.Project
+import com.michaelflisar.kmpdevtools.configs.module.AppModuleConfig
+import com.michaelflisar.kmpdevtools.configs.module.LibraryModuleConfig
 import org.gradle.api.provider.Provider
 
 class AndroidLibraryConfig private constructor(
@@ -14,31 +13,51 @@ class AndroidLibraryConfig private constructor(
     companion object {
 
         fun create(
-            project: Project,
-            libraryConfig: LibraryConfig,
+            libraryModuleConfig: LibraryModuleConfig.Library,
             compileSdk: Provider<String>,
             minSdk: Provider<String>,
             enableAndroidResources: Boolean = true,
         ): AndroidLibraryConfig {
+            val namespace = libraryModuleConfig.libraryConfig.getModuleNamespace(
+                libraryModuleConfig.project,
+                libraryModuleConfig.config
+            )
             return AndroidLibraryConfig(
                 compileSdk = compileSdk,
                 minSdk = minSdk,
                 enableAndroidResources = enableAndroidResources,
-                namespace = libraryConfig.getModuleNamespace(project)
+                namespace = namespace
             )
         }
 
         fun createFromPath(
-            project: Project,
-            appConfig: AppConfig,
+            libraryModuleConfig: LibraryModuleConfig.Manual,
             compileSdk: Provider<String>,
             minSdk: Provider<String>,
             enableAndroidResources: Boolean = true,
         ): AndroidLibraryConfig {
             val relativePath =
-                project.projectDir.relativeTo(project.rootDir).invariantSeparatorsPath
+                libraryModuleConfig.project.projectDir.relativeTo(libraryModuleConfig.project.rootDir).invariantSeparatorsPath
             val namespace = relativePath.split("/").joinToString(".")
-            val androidNamespace = "${appConfig.androidNamespace}.$namespace"
+            val androidNamespace = "${libraryModuleConfig.projectNamespace}.$namespace"
+            return AndroidLibraryConfig(
+                compileSdk = compileSdk,
+                minSdk = minSdk,
+                enableAndroidResources = enableAndroidResources,
+                namespace = androidNamespace
+            )
+        }
+
+        fun createFromPath(
+            appModuleConfig: AppModuleConfig,
+            compileSdk: Provider<String>,
+            minSdk: Provider<String>,
+            enableAndroidResources: Boolean = true,
+        ): AndroidLibraryConfig {
+            val relativePath =
+                appModuleConfig.project.projectDir.relativeTo(appModuleConfig.project.rootDir).invariantSeparatorsPath
+            val namespace = relativePath.split("/").joinToString(".")
+            val androidNamespace = "${appModuleConfig.projectNamespace}.$namespace"
             return AndroidLibraryConfig(
                 compileSdk = compileSdk,
                 minSdk = minSdk,

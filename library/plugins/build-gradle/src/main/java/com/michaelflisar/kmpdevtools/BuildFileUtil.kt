@@ -3,12 +3,11 @@ package com.michaelflisar.kmpdevtools
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
 import com.android.build.gradle.internal.crash.afterEvaluate
-import com.michaelflisar.kmpdevtools.core.configs.Config
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.configs.module.AppModuleConfig
+import com.michaelflisar.kmpdevtools.configs.module.LibraryModuleConfig
 import com.michaelflisar.kmpdevtools.configs.app.AndroidAppConfig
 import com.michaelflisar.kmpdevtools.configs.app.DesktopAppConfig
 import com.michaelflisar.kmpdevtools.configs.library.AndroidLibraryConfig
-import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
@@ -44,18 +43,14 @@ object BuildFileUtil {
      * autoReleaseOnMavenCentral = { version -> !version.contains("-") }
      * </code></pre>
      *
-     * @param project The Gradle project to configure.
-     * @param config The general configuration for the project.
-     * @param libraryConfig The library configuration for the publication.
+     * @param libraryModuleConfig The configuration for the library module being published.
      * @param platform The platform configuration for the publication.
      * @param autoReleaseOnMavenCentral A function that determines if releases should be automatically published.
      * @param sign Whether to sign the publications.
      * @param version The version of the library, defaults to the value of the "TAG" environment variable (TAG is set by github action workflow) or "LOCAL-SNAPSHOT".
      */
     fun setupMavenPublish(
-        project: Project,
-        config: Config,
-        libraryConfig: LibraryConfig,
+        libraryModuleConfig: LibraryModuleConfig.Library,
         platform: Platform = KotlinMultiplatform(
             javadocJar = JavadocJar.Dokka("dokkaGenerateHtml"),
             sourcesJar = SourcesJar.Sources()
@@ -64,29 +59,32 @@ object BuildFileUtil {
         sign: Boolean = System.getenv("CI")?.toBoolean() == true,
         version: String = System.getenv("TAG") ?: "LOCAL-SNAPSHOT",
     ) {
-        val module = libraryConfig.getModuleForProject(project.rootDir, project.projectDir)
+        val module = libraryModuleConfig.libraryConfig.getModuleForProject(
+            libraryModuleConfig.project.rootDir,
+            libraryModuleConfig.project.projectDir
+        )
 
-        project.extensions.configure(MavenPublishBaseExtension::class.java) {
+        libraryModuleConfig.project.extensions.configure(MavenPublishBaseExtension::class.java) {
             configure(platform)
             coordinates(
-                groupId = libraryConfig.maven.groupId,
+                groupId = libraryModuleConfig.libraryConfig.maven.groupId,
                 artifactId = module.artifactId,
                 version = version
             )
 
             pom {
-                name.set(libraryConfig.library.name)
-                description.set(module.libraryDescription(libraryConfig))
-                inceptionYear.set(libraryConfig.library.release.toString())
-                url.set(libraryConfig.library.getRepoLink(config.developer))
+                name.set(libraryModuleConfig.libraryConfig.library.name)
+                description.set(module.libraryDescription(libraryModuleConfig.libraryConfig))
+                inceptionYear.set(libraryModuleConfig.libraryConfig.library.release.toString())
+                url.set(libraryModuleConfig.libraryConfig.library.getRepoLink(libraryModuleConfig.config.developer))
 
                 licenses {
                     license {
-                        name.set(libraryConfig.library.license.name)
+                        name.set(libraryModuleConfig.libraryConfig.library.license.name)
                         url.set(
-                            libraryConfig.library.license.getLink(
-                                config.developer,
-                                libraryConfig.library
+                            libraryModuleConfig.libraryConfig.library.license.getLink(
+                                libraryModuleConfig.config.developer,
+                                libraryModuleConfig.libraryConfig.library
                             )
                         )
                     }
@@ -94,14 +92,18 @@ object BuildFileUtil {
 
                 developers {
                     developer {
-                        id.set(config.developer.mavenId)
-                        name.set(config.developer.name)
-                        email.set(config.developer.mail)
+                        id.set(libraryModuleConfig.config.developer.mavenId)
+                        name.set(libraryModuleConfig.config.developer.name)
+                        email.set(libraryModuleConfig.config.developer.mail)
                     }
                 }
 
                 scm {
-                    url.set(libraryConfig.library.getRepoLink(config.developer))
+                    url.set(
+                        libraryModuleConfig.libraryConfig.library.getRepoLink(
+                            libraryModuleConfig.config.developer
+                        )
+                    )
                 }
             }
 
@@ -116,16 +118,13 @@ object BuildFileUtil {
     }
 
     fun setupAndroidLibrary(
-        project: Project,
-        config: Config,
-        libraryConfig: LibraryConfig,
+        libraryModuleConfig: LibraryModuleConfig.Library,
         androidConfig: AndroidLibraryConfig,
         buildConfig: Boolean,
     ) {
-        val module = libraryConfig.getModuleForProject(project.rootDir, project.projectDir)
-        project.extensions.configure(LibraryExtension::class.java) {
+        libraryModuleConfig.project.extensions.configure(LibraryExtension::class.java) {
 
-            namespace = module.androidNamespace(libraryConfig)
+            namespace = libraryModuleConfig.namespace()
 
             this.compileSdk = androidConfig.compileSdk.get().toInt()
 
@@ -138,26 +137,24 @@ object BuildFileUtil {
             }
 
             compileOptions {
-                sourceCompatibility = JavaVersion.toVersion(config.javaVersion)
-                targetCompatibility = JavaVersion.toVersion(config.javaVersion)
+                sourceCompatibility = JavaVersion.toVersion(libraryModuleConfig.config.javaVersion)
+                targetCompatibility = JavaVersion.toVersion(libraryModuleConfig.config.javaVersion)
             }
         }
     }
 
     fun setupAndroidApp(
-        project: Project,
-        config: Config,
-        appConfig: AppConfig,
+        appModuleConfig: AppModuleConfig,
         androidAppConfig: AndroidAppConfig,
         generateResAppName: Boolean,
         buildConfig: Boolean,
         checkDebugKeyStoreProperty: Boolean,
         setupBuildTypesDebugAndRelease: Boolean,
-        buildTypeDebugSuffix : String = ".debug",
+        buildTypeDebugSuffix: String = ".debug",
     ) {
-        project.extensions.configure(ApplicationExtension::class.java) {
+        appModuleConfig.project.extensions.configure(ApplicationExtension::class.java) {
 
-            namespace = appConfig.androidNamespace
+            namespace = appModuleConfig.appConfig.namespace
 
             this.compileSdk = androidAppConfig.compileSdk.get().toInt()
 
@@ -170,26 +167,27 @@ object BuildFileUtil {
 
                 this.minSdk = androidAppConfig.minSdk.get().toInt()
                 this.targetSdk = androidAppConfig.targetSdk.get().toInt()
-                this.versionCode = appConfig.versionCode
-                this.versionName = appConfig.versionName
+                this.versionCode = appModuleConfig.appConfig.versionCode
+                this.versionName = appModuleConfig.appConfig.versionName
 
                 if (generateResAppName) {
                     resValue(
                         type = "string",
                         name = androidAppConfig.stringResourceIdForAppName,
-                        value = appConfig.name
+                        value = appModuleConfig.appConfig.name
                     )
                 }
             }
 
             compileOptions {
-                sourceCompatibility = JavaVersion.toVersion(config.javaVersion)
-                targetCompatibility = JavaVersion.toVersion(config.javaVersion)
+                sourceCompatibility = JavaVersion.toVersion(appModuleConfig.config.javaVersion)
+                targetCompatibility = JavaVersion.toVersion(appModuleConfig.config.javaVersion)
             }
 
             // eventually use local custom signing
             if (checkDebugKeyStoreProperty) {
-                val debugKeyStore = project.providers.gradleProperty("debugKeyStore").orNull
+                val debugKeyStore =
+                    appModuleConfig.project.providers.gradleProperty("debugKeyStore").orNull
                 if (debugKeyStore != null) {
                     signingConfigs {
                         getByName("debug") {
@@ -207,7 +205,10 @@ object BuildFileUtil {
                     release {
                         isMinifyEnabled = true
                         isShrinkResources = true
-                        proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+                        proguardFiles(
+                            getDefaultProguardFile("proguard-android-optimize.txt"),
+                            "proguard-rules.pro"
+                        )
                     }
                     debug {
                         isMinifyEnabled = false
@@ -220,10 +221,8 @@ object BuildFileUtil {
     }
 
     fun setupWindowsApp(
-        project: Project,
-        config: Config,
+        appModuleConfig: AppModuleConfig,
         application: JvmApplication,
-        appConfig: AppConfig,
         desktopAppConfig: DesktopAppConfig,
         configureNativeDistribution: JvmApplicationDistributions.() -> Unit = {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
@@ -240,18 +239,20 @@ object BuildFileUtil {
                 val now = LocalDateTime.now()
                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-                packageName = appConfig.name // entspricht dem exe Name
-                packageVersion = appConfig.versionName
-                description = "${appConfig.name} - Build at ${now.format(formatter)}"
-                copyright = "©${now.year} ${config.developer.name}. All rights reserved."
-                vendor = config.developer.name
+                packageName = appModuleConfig.appConfig.name // entspricht dem exe Name
+                packageVersion = appModuleConfig.appConfig.versionName
+                description =
+                    "${appModuleConfig.appConfig.name} - Build at ${now.format(formatter)}"
+                copyright =
+                    "©${now.year} ${appModuleConfig.config.developer.name}. All rights reserved."
+                vendor = appModuleConfig.config.developer.name
 
                 // https://github.com/JetBrains/compose-multiplatform/issues/1154
                 // => suggestRuntimeModules task ausführen um zu prüfen, was man hier hinzufügen sollte
                 // modules("java.instrument", "java.security.jgss", "java.sql", "java.xml.crypto", "jdk.unsupported")
 
                 windows {
-                    iconFile.set(project.file(desktopAppConfig.ico))
+                    iconFile.set(appModuleConfig.project.file(desktopAppConfig.ico))
                     //includeAllModules = true
                 }
             }
@@ -259,19 +260,15 @@ object BuildFileUtil {
     }
 
     fun registerLaunch4JTask(
-        project: Project,
-        config: Config,
-        appConfig: AppConfig,
+        appModuleConfig: AppModuleConfig,
         desktopAppConfig: DesktopAppConfig,
         jarTask: String = "flattenReleaseJars",
         outputFile: (exe: File) -> File = { it },
     ) {
-        project.tasks.register("launch4j", Launch4jLibraryTask::class.java) {
+        appModuleConfig.project.tasks.register("launch4j", Launch4jLibraryTask::class.java) {
             setupLaunch4J(
-                project = project,
-                config = config,
+                appModuleConfig = appModuleConfig,
                 task = this,
-                appConfig = appConfig,
                 desktopAppConfig = desktopAppConfig,
                 jarTask = jarTask,
                 outputFile = outputFile
@@ -280,10 +277,8 @@ object BuildFileUtil {
     }
 
     private fun setupLaunch4J(
-        project: Project,
-        config: Config,
+        appModuleConfig: AppModuleConfig,
         task: Launch4jLibraryTask,
-        appConfig: AppConfig,
         desktopAppConfig: DesktopAppConfig,
         jarTask: String = "flattenReleaseJars",
         outputFile: (exe: File) -> File = { it },
@@ -293,17 +288,17 @@ object BuildFileUtil {
             mainClassName.set(desktopAppConfig.mainClass)
             icon.set(project.file(desktopAppConfig.ico).absolutePath)
             setJarTask(project.tasks.getByName(jarTask))
-            outfile.set("${appConfig.name}.exe")
+            outfile.set("${appModuleConfig.appConfig.name}.exe")
 
             val now = LocalDateTime.now()
             val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-            productName.set(appConfig.name)
-            version.set(appConfig.versionName)
-            textVersion.set(appConfig.versionName)
-            description = "${appConfig.name} - Build at ${now.format(formatter)}"
-            copyright.set("©${now.year} ${config.developer.name}. All rights reserved.")
-            companyName.set(config.developer.name)
+            productName.set(appModuleConfig.appConfig.name)
+            version.set(appModuleConfig.appConfig.versionName)
+            textVersion.set(appModuleConfig.appConfig.versionName)
+            description = "${appModuleConfig.appConfig.name} - Build at ${now.format(formatter)}"
+            copyright.set("©${now.year} ${appModuleConfig.config.developer.name}. All rights reserved.")
+            companyName.set(appModuleConfig.config.developer.name)
 
             doLast {
 
@@ -334,11 +329,12 @@ object BuildFileUtil {
     }
 
     fun registerExtractProguardMapFromAABTask(
-        project: Project,
-        appName: String,
-        appVersionName: String,
-        outputFolder: String = "${if (project.providers.gradleProperty("work").isPresent) "D:/dev" else "M:/dev"}/06 - retrace"
+        appModuleConfig: AppModuleConfig,
+        outputFolder: String = "${if (appModuleConfig.project.providers.gradleProperty("work").isPresent) "D:/dev" else "M:/dev"}/06 - retrace",
     ) {
+        val project = appModuleConfig.project
+        val appName = appModuleConfig.appConfig.name
+        val appVersionName = appModuleConfig.appConfig.versionName
         afterEvaluate {
             project.tasks.named("bundleRelease").configure {
                 finalizedBy("extractProguardMap")
@@ -356,7 +352,7 @@ object BuildFileUtil {
         project: Project,
         appName: String,
         versionName: String,
-        outputFolder: String
+        outputFolder: String,
     ) {
         with(project) {
 

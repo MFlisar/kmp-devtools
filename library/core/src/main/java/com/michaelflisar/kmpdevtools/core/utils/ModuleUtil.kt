@@ -2,11 +2,11 @@ package com.michaelflisar.kmpdevtools.core.utils
 
 object ModuleUtil {
 
-    fun folderToModuleName(path: String, libraryId: String, libraryFolder: String = "library"): String {
+    fun folderToModuleName(path: String, libraryName: String, libraryFolder: String = "library"): String {
         return if (path == libraryFolder) {
-            ":$libraryId"
+            ":$libraryName"
         } else if (path.startsWith(libraryFolder)){
-            ":$libraryId:" + path.replace("$libraryFolder/", "").replace("/", ":")
+            ":$libraryName:" + path.replace("$libraryFolder/", "").replace("/", ":")
         } else {
             ":" + path.replace("/", ":")
         }

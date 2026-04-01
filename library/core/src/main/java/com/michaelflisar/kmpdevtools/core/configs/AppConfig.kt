@@ -9,11 +9,9 @@ import java.io.File
 @Serializable
 data class AppConfig(
     val name: String,
-    @SerialName("package-name") val packageName: String,
+    @SerialName("namespace") val namespace: String,
     @SerialName("version-code") val versionCode: Int,
     @SerialName("version-name") val versionName: String,
-    @SerialName("android-app-id") val androidAppId: String = packageName,
-    @SerialName("android-namespace") val androidNamespace: String = packageName,
 ) {
     companion object {
 

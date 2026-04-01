@@ -26,20 +26,17 @@ data class LibraryConfig(
 
     }
 
-    fun libraryId() = library.name.lowercase()
+    fun libraryName() = library.name.lowercase()
 
-    val namespace: String
-        get() = library.namespace
-
-    fun getModuleNamespace(project: Project): String {
+    fun getModuleNamespace(project: Project, config: Config): String {
         return getModuleForProject(
             project.rootDir,
             project.projectDir
-        ).androidNamespace(this)
+        ).androidNamespace(config)
     }
 
     fun getModuleForProject(rootDir: File, projectDir: File): Module {
-        val path = projectDir.relativeTo(rootDir).path
+        val path = projectDir.relativeTo(rootDir).invariantSeparatorsPath
         return getModuleByPath(path)
     }
 
@@ -52,7 +49,6 @@ data class LibraryConfig(
     class GithubLibrary(
         val name: String,
         val release: Int,
-        val namespace: String,
         val license: License,
     ) {
         fun getRepoLink(developer: Config.Developer): String {
@@ -83,13 +79,13 @@ data class LibraryConfig(
         val description: String,
         val path: String,
     ) {
-        fun libraryDescription(setup: LibraryConfig): String {
-            val library = setup.library.name
+        fun libraryDescription(libraryConfig: LibraryConfig): String {
+            val library = libraryConfig.library.name
             return "$library - $artifactId module - $description"
         }
 
-        fun androidNamespace(setup: LibraryConfig): String {
-            val namespace = setup.library.namespace
+        fun androidNamespace(config: Config): String {
+            val namespace = config.project.namespace
             val artifactIdPart = artifactId.replace("-", ".")
             return "$namespace.$artifactIdPart"
         }

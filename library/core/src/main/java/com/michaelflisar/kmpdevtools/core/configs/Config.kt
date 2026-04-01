@@ -10,6 +10,7 @@ import java.io.File
 data class Config(
     @SerialName("java-version") val javaVersion: String,
     val developer: Developer,
+    val project: Project,
     val readme: Readme
 ) {
     companion object {
@@ -19,7 +20,7 @@ data class Config(
         fun read(project: org.gradle.api.initialization.ProjectDescriptor) =
             readFromProject(project.projectDir)
 
-        fun read(project: Project) = readFromProject(project.rootDir)
+        fun read(project: org.gradle.api.Project) = readFromProject(project.rootDir)
         fun readFromProject(root: File) =
             ConfigReader.readFromProject(root, relativePath, serializer())
     }
@@ -33,6 +34,12 @@ data class Config(
         @SerialName("github-user-name") val githubUserName: String,
     )
 
+    @Serializable
+    class Project(
+        val namespace: String
+    ) {
+
+    }
     /*
      * readme:
         screenshots:
