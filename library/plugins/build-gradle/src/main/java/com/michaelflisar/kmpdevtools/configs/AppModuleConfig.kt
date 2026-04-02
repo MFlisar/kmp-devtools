@@ -1,4 +1,4 @@
-package com.michaelflisar.kmpdevtools.configs.module
+package com.michaelflisar.kmpdevtools.configs
 
 import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import com.michaelflisar.kmpdevtools.core.configs.Config

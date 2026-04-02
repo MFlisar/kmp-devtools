@@ -1,5 +1,6 @@
 import com.vanniktech.maven.publish.GradlePlugin
 import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.SourcesJar
 
 plugins {
     `kotlin-dsl`
@@ -50,6 +51,8 @@ dependencies {
     implementation(libs.compose)
     implementation(libs.kotlin.compose)
     implementation(libs.launch4j)
+    implementation(libs.buildkonfig.plugin)
+    implementation(libs.buildkonfig.compiler)
 
     implementation(deps.yaml)
 
@@ -68,7 +71,7 @@ mavenPublishing {
     configure(
         GradlePlugin(
             javadocJar = JavadocJar.Dokka("dokkaGenerateHtml"),
-            sourcesJar = true
+            sourcesJar = SourcesJar.Sources()
         )
     )
 

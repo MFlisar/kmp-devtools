@@ -5,6 +5,7 @@ kotlin = 				        "2.3.20"
 dokka =                         "2.1.0"
 gradle-maven-publish-plugin =   "0.36.0"
 compose =                       "1.8.2"
+buildkonfig =                   "0.17.1"
 launch4j =                      "3.0.7"
 
 [plugins]
@@ -34,5 +35,7 @@ android-library =                   { module = "com.android.kotlin.multiplatform
 gradle-maven-publish-plugin =       { module = "com.vanniktech:gradle-maven-publish-plugin",                version.ref = "gradle-maven-publish-plugin" }
 compose =                           { module = "org.jetbrains.compose:org.jetbrains.compose.gradle.plugin", version.ref = "compose" }
 launch4j =                          { module = "edu.sc.seis.launch4j:edu.sc.seis.launch4j.gradle.plugin ",  version.ref = "launch4j" }
+buildkonfig-plugin =                { module = "com.codingfeline.buildkonfig:com.codingfeline.buildkonfig.gradle.plugin", version.ref = "buildkonfig" }
+buildkonfig-compiler =              { module = "com.codingfeline.buildkonfig:buildkonfig-compiler", version.ref = "buildkonfig" }
 
 

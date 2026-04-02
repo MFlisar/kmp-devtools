@@ -3,11 +3,11 @@ package com.michaelflisar.kmpdevtools
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
 import com.android.build.gradle.internal.crash.afterEvaluate
-import com.michaelflisar.kmpdevtools.configs.module.AppModuleConfig
-import com.michaelflisar.kmpdevtools.configs.module.LibraryModuleConfig
-import com.michaelflisar.kmpdevtools.configs.app.AndroidAppConfig
-import com.michaelflisar.kmpdevtools.configs.app.DesktopAppConfig
-import com.michaelflisar.kmpdevtools.configs.library.AndroidLibraryConfig
+import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
+import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
+import com.michaelflisar.kmpdevtools.configs.AndroidAppConfig
+import com.michaelflisar.kmpdevtools.configs.DesktopAppConfig
+import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension

@@ -1,5 +1,6 @@
 import com.vanniktech.maven.publish.JavaLibrary
 import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.SourcesJar
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -12,7 +13,8 @@ plugins {
 // Informations
 // -------------------
 
-val description = "a gradle plugin and plain kotlin dependency that provides core functions for kmp libraries for development tooling"
+val description =
+    "a gradle plugin and plain kotlin dependency that provides core functions for kmp libraries for development tooling"
 
 // Module
 val artifactId = "core"
@@ -34,14 +36,16 @@ kotlin {
 
     sourceSets {
 
-        val main by getting {
-            dependencies {
+        val main by getting { }
 
-                implementation(gradleKotlinDsl())
+        main.dependencies {
 
-                implementation(deps.yaml)
-            }
+            implementation(gradleKotlinDsl())
+
+            implementation(deps.yaml)
+
         }
+
     }
 }
 
@@ -58,7 +62,7 @@ mavenPublishing {
     configure(
         JavaLibrary(
             javadocJar = JavadocJar.Dokka("dokkaGenerateHtml"),
-            sourcesJar = true
+            sourcesJar = SourcesJar.Sources()
         )
     )
 

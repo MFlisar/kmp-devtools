@@ -1,6 +1,10 @@
 package com.michaelflisar.kmpdevtools
 
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type
+import com.codingfeline.buildkonfig.gradle.BuildKonfigExtension
+import com.codingfeline.buildkonfig.gradle.TargetConfigDsl
 import com.michaelflisar.kmpdevtools.core.Platform
+import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import org.gradle.api.NamedDomainObjectContainer
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 
@@ -138,4 +142,16 @@ fun setupDependencies(
     if (log)
         dsl.printDependencies()
     dsl.setupDependencies(log)
+}
+
+fun BuildKonfigExtension.setupBuildKonfig(appConfig: AppConfig, exposeObjectWithName: String = "BuildKonfig", config: TargetConfigDsl.() -> Unit = {}) {
+    packageName = appConfig.namespace
+    this.exposeObjectWithName = exposeObjectWithName
+    defaultConfigs {
+        buildConfigField(Type.STRING, "versionName", appConfig.versionName)
+        buildConfigField(Type.INT, "versionCode", appConfig.versionCode.toString())
+        buildConfigField(Type.STRING, "namespace", appConfig.namespace)
+        buildConfigField(Type.STRING, "appName", appConfig.name)
+        config()
+    }
 }

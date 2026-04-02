@@ -1,4 +1,4 @@
-package com.michaelflisar.kmpdevtools.configs.app
+package com.michaelflisar.kmpdevtools.configs
 
 class WasmAppConfig(
     val moduleName: String = DEFAULT_WASM_MODULE_NAME,

@@ -1,7 +1,5 @@
-package com.michaelflisar.kmpdevtools.configs.library
+package com.michaelflisar.kmpdevtools.configs
 
-import com.michaelflisar.kmpdevtools.configs.module.AppModuleConfig
-import com.michaelflisar.kmpdevtools.configs.module.LibraryModuleConfig
 import org.gradle.api.provider.Provider
 
 class AndroidLibraryConfig private constructor(

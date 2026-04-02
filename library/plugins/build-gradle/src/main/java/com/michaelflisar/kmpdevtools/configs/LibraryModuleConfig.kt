@@ -1,4 +1,4 @@
-package com.michaelflisar.kmpdevtools.configs.module
+package com.michaelflisar.kmpdevtools.configs
 
 import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import com.michaelflisar.kmpdevtools.core.configs.Config
@@ -37,14 +37,14 @@ sealed class LibraryModuleConfig {
         fun read(project: Project): Library {
             val config = Config.read(project.rootProject)
             val libraryConfig = LibraryConfig.read(project.rootProject)
-            val libraryModuleConfig = LibraryModuleConfig.Library(project, config, libraryConfig)
+            val libraryModuleConfig = Library(project, config, libraryConfig)
             return libraryModuleConfig
         }
 
         fun readManual(project: Project): Manual {
             val config = Config.read(project.rootProject)
             val appConfig = AppConfig.read(project.rootProject)
-            val libraryModuleConfig = LibraryModuleConfig.Manual(project, config, appConfig)
+            val libraryModuleConfig = Manual(project, config, appConfig)
             return libraryModuleConfig
         }
     }

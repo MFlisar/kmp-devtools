@@ -1,5 +1,6 @@
 import com.vanniktech.maven.publish.GradlePlugin
 import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.SourcesJar
 
 plugins {
     `kotlin-dsl`
@@ -49,7 +50,7 @@ mavenPublishing {
     configure(
         GradlePlugin(
             javadocJar = JavadocJar.Dokka("dokkaGenerateHtml"),
-            sourcesJar = true
+            sourcesJar = SourcesJar.Sources()
         )
     )
 

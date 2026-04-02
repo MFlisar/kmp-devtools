@@ -1,4 +1,4 @@
-package com.michaelflisar.kmpdevtools.configs.app
+package com.michaelflisar.kmpdevtools.configs
 
 class DesktopAppConfig(
     val mainClass: String,
