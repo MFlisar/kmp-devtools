@@ -3,11 +3,12 @@ package com.michaelflisar.kmpdevtools
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
 import com.android.build.gradle.internal.crash.afterEvaluate
-import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
-import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
 import com.michaelflisar.kmpdevtools.configs.AndroidAppConfig
-import com.michaelflisar.kmpdevtools.configs.DesktopAppConfig
 import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
+import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
+import com.michaelflisar.kmpdevtools.configs.DesktopAppConfig
+import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
+import com.michaelflisar.kmpdevtools.tasks.CopyIconTask
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
@@ -395,4 +396,45 @@ object BuildFileUtil {
             }
         }
     }
+
+    fun registerCopyIconToComposeModuleTask(
+        project: Project,
+        sourceModule: String = ":app:app:android",
+        targetModule: String = ":app:app:shared",
+        sourceFile: String = "src/main/ic_launcher-playstore.png",
+        targetComposeFile: String = "src/commonMain/composeResources/drawable/ic_launcher.png",
+        targetIcoFile: String = "ic_launcher.ico",
+        createComposeResource: Boolean = true,
+        createIco: Boolean = true,
+    ) {
+        val sourceProject = project.project(sourceModule)
+        val targetProject = project.project(targetModule)
+        val sourceModulePath = sourceProject.projectDir
+            .relativeTo(project.rootDir)
+            .invariantSeparatorsPath
+        val targetModulePath = targetProject.projectDir
+            .relativeTo(project.rootDir)
+            .invariantSeparatorsPath
+        val copyIconTask = project.tasks.register("copyIconTask", CopyIconTask::class.java)
+        copyIconTask.configure {
+            this.sourceModule = sourceModulePath
+            this.sourceFile = sourceFile
+            this.targetModule = targetModulePath
+            this.targetComposeFile = targetComposeFile
+            this.targetIcoFile = targetIcoFile
+            this.createComposeResource = createComposeResource
+            this.createIco = createIco
+        }
+
+        project.project(targetModule) {
+            //println("Registered copyIconTask with sourceModule: $sourceModulePath, targetModule: $targetModulePath")
+            tasks.configureEach {
+                if (name.endsWith("ForCommonMain") || name == "copyAndroidMainComposeResourcesToAndroidAssets") {
+                    dependsOn(copyIconTask)
+                    //println("- task $name depends on copyIconTask")
+                }
+            }
+        }
+    }
+
 }

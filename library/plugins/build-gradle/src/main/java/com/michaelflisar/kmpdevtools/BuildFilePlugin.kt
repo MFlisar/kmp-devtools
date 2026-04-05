@@ -5,6 +5,7 @@ import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
 import com.michaelflisar.kmpdevtools.core.utils.ProjectData
 import com.michaelflisar.kmpdevtools.readme.ReadmeDefaults
 import com.michaelflisar.kmpdevtools.readme.UpdateReadmeUtil
+import com.michaelflisar.kmpdevtools.tasks.CopyIconTask
 import com.michaelflisar.kmpdevtools.tooling.MacActions
 import com.michaelflisar.kmpdevtools.tooling.MacDefaults
 import com.michaelflisar.kmpdevtools.tooling.ProjectActions
