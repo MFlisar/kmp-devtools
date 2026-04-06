@@ -5,6 +5,7 @@ import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
 import com.michaelflisar.kmpdevtools.core.utils.ProjectData
 import com.michaelflisar.kmpdevtools.readme.ReadmeDefaults
 import com.michaelflisar.kmpdevtools.readme.UpdateReadmeUtil
+import com.michaelflisar.kmpdevtools.tasks.CopyIconConfig
 import com.michaelflisar.kmpdevtools.tasks.CopyIconTask
 import com.michaelflisar.kmpdevtools.tooling.MacActions
 import com.michaelflisar.kmpdevtools.tooling.MacDefaults
@@ -23,18 +24,21 @@ import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.TaskAction
 import javax.inject.Inject
 
-//abstract class BuildFilePluginExtension @Inject constructor(objects: ObjectFactory) {
-//
-//    //abstract val excludeDemoFromCI: Property<Boolean>
-//    //abstract val buildReadme: Property<Boolean>
-//    //abstract val targets: Property<Targets>
-//
-//    init {
-//        //excludeDemoFromCI.convention(true)
-//        //buildReadme.convention(true)
-//        //targets.convention(Targets())
-//    }
-//}
+abstract class BuildFilePluginExtension @Inject constructor(private val objects: ObjectFactory) {
+
+    abstract val copyIconConfig: Property<CopyIconConfig>
+
+    init {
+        copyIconConfig.convention(objects.newInstance(CopyIconConfig::class.java))
+    }
+
+    fun setupCopyIcon(configure: CopyIconConfig.() -> Unit) {
+        copyIconConfig.get().apply {
+            enableAll()
+            configure()
+        }
+    }
+}
 
 class BuildFilePlugin : Plugin<Project> {
 
@@ -44,14 +48,34 @@ class BuildFilePlugin : Plugin<Project> {
 
         this.project = project
 
-        //val ext = project.extensions.create("buildFilePlugin", BuildFilePluginExtension::class.java)
+        val ext = project.extensions.create("buildFilePlugin", BuildFilePluginExtension::class.java)
 
-        // 3) register tasks
+        // 1) register root tasks
         if (project == project.rootProject) {
             project.tasks.register("updateMarkdownFiles", UpdateMarkdownFilesTask::class.java)
             project.tasks.register("macActions", MacActionsTask::class.java)
             project.tasks.register("renameProject", RenameProjectTask::class.java)
             project.tasks.register("updateDevToolsVersion", UpdateDevToolsVersionTask::class.java)
+        }
+
+        // 2) check copyIconTask - muss nach afterEvaluate sein, damit der User-Block bereits ausgeführt wurde
+        project.afterEvaluate {
+            val copyIconConfig = ext.copyIconConfig.get()
+            if (copyIconConfig.enabled.get())
+            {
+                //println("- copyIconConfig is enabled, setting up copyIconTask and dependencies")
+                val copyIconTask = project.tasks.register("copyIconTask", CopyIconTask::class.java)
+                copyIconTask.configure {
+                    rootDirectory.set(project.rootProject.layout.projectDirectory)
+                    config.set(copyIconConfig)
+                }
+
+                project.tasks.configureEach {
+                    if (name.startsWith("compile") || name == "copyNonXmlValueResourcesForCommonMain") {
+                        dependsOn(copyIconTask)
+                    }
+                }
+            }
         }
     }
 }
