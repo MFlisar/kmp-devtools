@@ -29,6 +29,8 @@ object UpdateReadmeUtil {
         println("")
 
         val modules = libraryConfig.modules.filter { it.artifactId.isNotEmpty() }
+        val pluginModules = modules.filter { it.plugin }
+        val nonPluginModules = modules.filter { !it.plugin }
 
         // files
         val fileAppVersionToml = File(rootDir, "gradle/app.versions.toml")
@@ -222,7 +224,7 @@ object UpdateReadmeUtil {
                     }
                 appendLine("| " + row.joinToString(" | ") + " |")
             }
-        }
+        }.takeIf { nonPluginModules.isNotEmpty() } ?: ""
         val versionsTable = buildString {
             val header = listOf("Dependency", "Version")
             appendLine("| " + header.joinToString(" | ") + " |")
@@ -246,7 +248,7 @@ object UpdateReadmeUtil {
                 appendLine("| Jetbrains Compose | `$jetbrainsCompose` |")
             if (jetbrainsComposeMaterial3 != null)
                 appendLine("| Jetbrains Compose Material3 | `$jetbrainsComposeMaterial3` |")
-        }
+        }.takeIf { nonPluginModules.isNotEmpty() } ?: ""
         val experimentalInfo = buildString {
             if (experimentalAnnotations.isNotEmpty()) {
                 appendLine("> :warning: Following experimental annotations are used:")
@@ -265,10 +267,19 @@ object UpdateReadmeUtil {
         // 5) create setup instructions
         val libraryName = libraryConfig.library.name.lowercase().replace(" ", "-")
         val setupViaDependencies = buildString {
-            appendLine("val $libraryName = \"<LATEST-VERSION>\"")
-            appendLine()
-            for (module in modules) {
+            if (nonPluginModules.isNotEmpty()) {
+                appendLine("val $libraryName = \"<LATEST-VERSION>\"")
+                appendLine()
+            }
+            for (module in nonPluginModules) {
                 appendLine("implementation(\"${libraryConfig.maven.groupId}:${module.artifactId}:\${$libraryName}\")")
+            }
+            if (pluginModules.isNotEmpty()) {
+                appendLine("plugins {")
+                for (module in pluginModules) {
+                    appendLine("    id(\"${libraryConfig.maven.groupId}.${module.artifactId}\") version \"<LATEST-VERSION>\"")
+                }
+                appendLine("}")
             }
         }
 
@@ -277,21 +288,38 @@ object UpdateReadmeUtil {
             appendLine()
             appendLine("$libraryName = \"<LATEST-VERSION>\"")
             appendLine()
-            appendLine("[libraries]")
-            appendLine()
-            for (module in modules) {
-                appendLine("${libraryName}-${module.artifactId} = { module = \"${libraryConfig.maven.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
+            if (nonPluginModules.isNotEmpty()) {
+                appendLine("[libraries]")
+                appendLine()
+                for (module in nonPluginModules) {
+                    appendLine("${libraryName}-${module.artifactId} = { module = \"${libraryConfig.maven.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
+                }
+            }
+            if (pluginModules.isNotEmpty()) {
+                appendLine("[plugins]")
+                appendLine()
+                for (module in pluginModules) {
+                    appendLine("${libraryName}-${module.artifactId} = { id = \"${libraryConfig.maven.groupId}.${module.artifactId}\", version.ref = \"$libraryName\" }")
+                }
             }
         }
         val setupViaVersionCatalogue2 = buildString {
-            for (module in modules) {
+            for (module in nonPluginModules) {
                 val key = "${libraryName}-${module.artifactId}".replace("-", ".")
                 appendLine("implementation(libs.$key)")
+            }
+            if (pluginModules.isNotEmpty())
+            {
+                appendLine("plugins {")
+                for (module in pluginModules) {
+                    val key = "${libraryName}-${module.artifactId}".replace("-", ".")
+                    appendLine("    id(libs.$key)")
+                }
+                appendLine("}")
             }
         }
 
         // 6) create screenshot replacement
-
         val screenshots = if (folderDocumentationScreenshots.exists()) {
             val excludedScreenshots = mutableListOf<File>()
             val result = folderDocumentationScreenshots

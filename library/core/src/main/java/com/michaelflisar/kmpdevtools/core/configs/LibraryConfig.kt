@@ -78,6 +78,7 @@ data class LibraryConfig(
         @SerialName("artifact-id") val artifactId: String,
         val description: String,
         val path: String,
+        val plugin: Boolean = false
     ) {
         fun libraryDescription(libraryConfig: LibraryConfig): String {
             val library = libraryConfig.library.name
