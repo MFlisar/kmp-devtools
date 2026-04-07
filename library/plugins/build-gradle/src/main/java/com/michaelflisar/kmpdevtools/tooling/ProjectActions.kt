@@ -125,7 +125,7 @@ object ProjectActions {
         }
     }
 
-    private fun readUserInput(prompt: String, forceNotEmpty: Boolean = true): String {
+    fun readUserInput(prompt: String, forceNotEmpty: Boolean = true): String {
         println(prompt)
         val input = readlnOrNull()?.trim().orEmpty()
         if (input.isEmpty() && forceNotEmpty) {

@@ -1,7 +1,10 @@
 package com.michaelflisar.kmpdevtools
 
+import com.michaelflisar.kmpdevtools.core.ConfigDefaults
+import com.michaelflisar.kmpdevtools.core.ConfigReader
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig.Companion.fileName
 import com.michaelflisar.kmpdevtools.readme.ReadmeDefaults
 import com.michaelflisar.kmpdevtools.readme.UpdateReadmeUtil
 import com.michaelflisar.kmpdevtools.tooling.MacActions
@@ -11,15 +14,13 @@ import com.michaelflisar.kmpdevtools.tooling.ToolingSetup
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
-import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.TaskAction
-import javax.inject.Inject
 
 //abstract class BuildFilePluginExtension @Inject constructor(private val objects: ObjectFactory) {
 //
@@ -39,8 +40,8 @@ class BuildFilePlugin : Plugin<Project> {
         if (project == project.rootProject) {
             project.tasks.register("updateMarkdownFiles", UpdateMarkdownFilesTask::class.java)
             project.tasks.register("macActions", MacActionsTask::class.java)
-            project.tasks.register("renameProject", RenameProjectTask::class.java)
             project.tasks.register("updateDevToolsVersion", UpdateDevToolsVersionTask::class.java)
+            project.tasks.register("devTools", DevToolsTask::class.java)
         }
     }
 }
@@ -49,31 +50,42 @@ class BuildFilePlugin : Plugin<Project> {
 // Tasks
 // ----------------------------
 
-/**
- * Base task that provides access to the config files
- *
- * needed to get gradle caching working properly
- */
-abstract class ConfigDependentTask : DefaultTask() {
+abstract class BaseTask : DefaultTask() {
 
     @get:InputDirectory
     abstract val rootDirectory: DirectoryProperty
 
-    @get:InputFile
-    abstract val configFile: RegularFileProperty
-
-    @get:InputFile
-    abstract val libraryConfigFile: RegularFileProperty
+    @get:InputFiles
+    abstract val configFiles: ConfigurableFileCollection
 
     init {
         rootDirectory.convention(project.rootProject.layout.projectDirectory)
-        configFile.convention(project.rootProject.layout.projectDirectory.file(Config.relativePath))
-        libraryConfigFile.convention(project.rootProject.layout.projectDirectory.file(LibraryConfig.relativePath))
+        configFiles.from(project.rootProject.layout.projectDirectory.dir(ConfigDefaults.DEFAULT_FOLDER))
     }
 
+    fun readRoot() = rootDirectory.get().asFile
+
+    fun readConfig(): Config {
+        val root = readRoot()
+        return ConfigReader.readFromProject(
+            root = root,
+            relativePath = "${ConfigDefaults.DEFAULT_FOLDER}/$fileName",
+            serializer = Config.serializer()
+        )
+    }
+
+    fun tryReadLibraryConfig(): LibraryConfig? {
+        val root = readRoot()
+        return ConfigReader.tryReadFromProject(
+            root = root,
+            relativePath = "${ConfigDefaults.DEFAULT_FOLDER}/$fileName",
+            serializer = LibraryConfig.serializer()
+        )
+
+    }
 }
 
-abstract class UpdateMarkdownFilesTask : ConfigDependentTask() {
+abstract class UpdateMarkdownFilesTask : BaseTask() {
 
     @get:Input
     abstract val template: Property<String>
@@ -96,8 +108,9 @@ abstract class UpdateMarkdownFilesTask : ConfigDependentTask() {
 
     @TaskAction
     fun run() {
-        val config = Config.readFromProject(rootDirectory.get().asFile)
-        val libraryConfig = LibraryConfig.readFromProject(rootDirectory.get().asFile)
+        val config = readConfig()
+        val libraryConfig = tryReadLibraryConfig()
+            ?: throw RuntimeException("LibraryConfig not found in project")
         UpdateReadmeUtil.update(
             rootDir = rootDirectory.get().asFile,
             config = config,
@@ -110,11 +123,12 @@ abstract class UpdateMarkdownFilesTask : ConfigDependentTask() {
     }
 }
 
-abstract class MacActionsTask : ConfigDependentTask() {
+abstract class MacActionsTask : BaseTask() {
 
     @TaskAction
     fun run() {
-        val libraryConfig = LibraryConfig.readFromProject(rootDirectory.get().asFile)
+        val libraryConfig =
+            tryReadLibraryConfig() ?: throw RuntimeException("LibraryConfig not found in project")
         val sshSetup = MacDefaults.getMacSSHSetup()
         val relativePathRoot =
             MacDefaults.getRelativePathRoot(rootDirectory.get().asFile, libraryConfig)
@@ -128,18 +142,44 @@ abstract class MacActionsTask : ConfigDependentTask() {
     }
 }
 
-abstract class RenameProjectTask : ConfigDependentTask() {
-
-    @TaskAction
-    fun run() {
-        ProjectActions.runProjectRenamer()
-    }
-}
-
-abstract class UpdateDevToolsVersionTask : ConfigDependentTask() {
+abstract class UpdateDevToolsVersionTask : BaseTask() {
 
     @TaskAction
     fun run() {
         ProjectActions.updateDevToolsVersion(rootDirectory.get().asFile)
+    }
+}
+
+abstract class DevToolsTask : BaseTask() {
+
+    @TaskAction
+    fun run() {
+
+        val root = readRoot()
+
+        val config = readConfig()
+        val libraryConfig = tryReadLibraryConfig()
+
+        println()
+        println("-------------------")
+        println("Available Tasks:")
+        println("-------------------")
+        println("- (1) updateDevToolsVersion")
+        println("- (2) update mflisar dependency versions")
+        println("- (3) project renamer")
+
+        val input = ProjectActions.readUserInput("Enter task number: ")
+
+        when (input) {
+            "1" -> ProjectActions.updateDevToolsVersion(root)
+            "2" -> {
+                println("TODO")
+            }
+
+            "3" -> ProjectActions.runProjectRenamer()
+
+            else -> println("Invalid input")
+        }
+
     }
 }

@@ -1,6 +1,5 @@
 package com.michaelflisar.kmpdevtools.core.configs
 
-import com.michaelflisar.kmpdevtools.core.ConfigReader
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.gradle.api.Project
@@ -15,14 +14,7 @@ data class LibraryConfig(
 ) {
     companion object {
 
-        const val relativePath = "configs/library-config.yml"
-
-        fun read(project: org.gradle.api.initialization.ProjectDescriptor) =
-            readFromProject(project.projectDir)
-
-        fun read(project: Project) = readFromProject(project.rootDir)
-        fun readFromProject(root: File) =
-            ConfigReader.readFromProject(root, relativePath, serializer())
+        const val fileName = "library-config.yml"
 
     }
 
@@ -78,7 +70,7 @@ data class LibraryConfig(
         @SerialName("artifact-id") val artifactId: String,
         val description: String,
         val path: String,
-        val plugin: Boolean = false
+        val plugin: Boolean = false,
     ) {
         fun libraryDescription(libraryConfig: LibraryConfig): String {
             val library = libraryConfig.library.name

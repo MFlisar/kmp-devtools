@@ -4,13 +4,19 @@ import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.KSerializer
 import java.io.File
 
-internal object ConfigReader {
+object ConfigReader {
 
     inline fun <reified T> readFromProject(
         root: File,
         relativePath: String,
         serializer: KSerializer<T>,
     ) = read(root, relativePath, serializer)
+
+    inline fun <reified T> tryReadFromProject(
+        root: File,
+        relativePath: String,
+        serializer: KSerializer<T>,
+    ) = tryRead(File(root, relativePath), serializer)
 
     inline fun <reified T> read(
         root: File,
