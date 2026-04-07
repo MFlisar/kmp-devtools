@@ -71,7 +71,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: "--exclude https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }} --exclude https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ ${{ inputs.lychee_args }}"
+          args: |
+            --exclude '(?i)^https://${{ github.repository_owner }}\.github\.io/${{ github.event.repository.name }}/?$'
+            ${{ inputs.lychee_args }}
 
       - name: Remove lychee folder
         run: rm -rf lychee
