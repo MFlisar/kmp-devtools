@@ -14,8 +14,8 @@ object ProjectActions {
     fun runProjectRenamer() {
 
         val rootDir = File(System.getProperty("user.dir"))
-        val config = Config.readFromProject(rootDir)
-        val libraryConfig = LibraryConfig.readFromProject(rootDir)
+        val config = Config.read(rootDir)
+        val libraryConfig = LibraryConfig.read(rootDir)
 
         val currentPackageName = config.project.namespace
         val currentLibraryName = libraryConfig.library.name

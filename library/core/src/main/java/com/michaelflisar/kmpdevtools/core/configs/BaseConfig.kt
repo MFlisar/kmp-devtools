@@ -1,36 +1,35 @@
-package com.michaelflisar.kmpdevtools.core
+package com.michaelflisar.kmpdevtools.core.configs
 
 import com.charleskorn.kaml.Yaml
+import com.michaelflisar.kmpdevtools.core.ConfigDefaults
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import java.io.File
 
-abstract class BaseConfig {
 
-    abstract class BaseConfigCompanion<T : BaseConfig>(
-        val fileName: String,
-        val serializer: KSerializer<T>,
-    ) {
-        fun readFromProject(root: File): T {
-            return ConfigReader.read(
-                root = root,
-                relativePath = "${ConfigDefaults.DEFAULT_FOLDER}/$fileName",
-                serializer = serializer
-            )
-        }
-
-        fun tryReadFromProject(root: File): T? {
-            return ConfigReader.tryRead(
-                file = File(root, "${ConfigDefaults.DEFAULT_FOLDER}/$fileName"),
-                serializer = serializer
-            )
-        }
-
+abstract class ConfigReader<T>(
+    val fileName: String,
+    val serializer: () -> KSerializer<T>,
+) {
+    fun read(root: File): T {
+        return ConfigReaderUtil.read(
+            root = root,
+            relativePath = "${ConfigDefaults.DEFAULT_FOLDER}/$fileName",
+            serializer = serializer()
+        )
     }
+
+    fun tryRead(root: File): T? {
+        return ConfigReaderUtil.tryRead(
+            file = File(root, "${ConfigDefaults.DEFAULT_FOLDER}/$fileName"),
+            serializer = serializer()
+        )
+    }
+
 }
 
 
-internal object ConfigReader {
+internal object ConfigReaderUtil {
 
     fun <T> readFromProject(
         root: File,

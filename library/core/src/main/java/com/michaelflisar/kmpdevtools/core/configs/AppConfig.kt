@@ -1,6 +1,6 @@
 package com.michaelflisar.kmpdevtools.core.configs
 
-import com.michaelflisar.kmpdevtools.core.BaseConfig
+import com.michaelflisar.kmpdevtools.core.ConfigDefaults
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -10,6 +10,9 @@ data class AppConfig(
     @SerialName("namespace") val namespace: String,
     @SerialName("version-code") val versionCode: Int,
     @SerialName("version-name") val versionName: String,
-) : BaseConfig() {
-    companion object : BaseConfigCompanion<AppConfig>("app-config.yml", AppConfig.serializer())
+) {
+    companion object : ConfigReader<AppConfig>(
+        ConfigDefaults.FILE_APP_CONFIG,
+        { AppConfig.serializer() }
+    )
 }

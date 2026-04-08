@@ -1,6 +1,6 @@
 package com.michaelflisar.kmpdevtools.core.configs
 
-import com.michaelflisar.kmpdevtools.core.BaseConfig
+import com.michaelflisar.kmpdevtools.core.ConfigDefaults
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.gradle.api.Project
@@ -12,8 +12,12 @@ data class LibraryConfig(
     val maven: Maven,
     val modules: List<Module>,
     val xcframeworks: List<XCFramework>,
-) : BaseConfig() {
-    companion object : BaseConfigCompanion<LibraryConfig>("library-config.yml", LibraryConfig.serializer())
+) {
+
+    companion object : ConfigReader<LibraryConfig>(
+        ConfigDefaults.FILE_LIBRARY_CONFIG,
+        { LibraryConfig.serializer() }
+    )
 
     fun libraryName() = library.name.lowercase()
 

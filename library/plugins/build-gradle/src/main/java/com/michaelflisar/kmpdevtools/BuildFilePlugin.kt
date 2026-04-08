@@ -65,12 +65,12 @@ abstract class BaseTask : DefaultTask() {
 
     fun readConfig(): Config {
         val root = readRoot()
-        return Config.readFromProject(root)
+        return Config.read(root)
     }
 
     fun tryReadLibraryConfig(): LibraryConfig? {
         val root = readRoot()
-        return LibraryConfig.tryReadFromProject(root)
+        return LibraryConfig.tryRead(root)
     }
 }
 

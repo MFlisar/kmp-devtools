@@ -19,7 +19,7 @@ object MacDefaults {
 
     fun getRelativePathRoot(
         project: Project,
-        libraryConfig: LibraryConfig = LibraryConfig.readFromProject(project.projectDir),
+        libraryConfig: LibraryConfig = LibraryConfig.read(project.projectDir),
         macTargetRootDir: String = "/Users/mflisar/dev",
     ) = RelativePath.Root(
         local = project.rootDir.absolutePath,

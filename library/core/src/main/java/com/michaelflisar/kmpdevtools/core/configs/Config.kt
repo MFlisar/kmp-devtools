@@ -1,6 +1,6 @@
 package com.michaelflisar.kmpdevtools.core.configs
 
-import com.michaelflisar.kmpdevtools.core.BaseConfig
+import com.michaelflisar.kmpdevtools.core.ConfigDefaults
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -10,9 +10,12 @@ data class Config(
     val developer: Developer,
     val project: Project,
     val readme: Readme,
-) : BaseConfig() {
+) {
 
-    companion object : BaseConfigCompanion<Config>("config.yml", Config.serializer())
+    companion object : ConfigReader<Config>(
+        ConfigDefaults.FILE_CONFIG,
+        { Config.serializer() }
+    )
 
     @Serializable
     class Developer(
