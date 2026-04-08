@@ -1,10 +1,8 @@
 package com.michaelflisar.kmpdevtools
 
 import com.michaelflisar.kmpdevtools.core.ConfigDefaults
-import com.michaelflisar.kmpdevtools.core.ConfigReader
 import com.michaelflisar.kmpdevtools.core.configs.Config
 import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig.Companion.fileName
 import com.michaelflisar.kmpdevtools.readme.ReadmeDefaults
 import com.michaelflisar.kmpdevtools.readme.UpdateReadmeUtil
 import com.michaelflisar.kmpdevtools.tooling.MacActions
@@ -67,21 +65,12 @@ abstract class BaseTask : DefaultTask() {
 
     fun readConfig(): Config {
         val root = readRoot()
-        return ConfigReader.readFromProject(
-            root = root,
-            relativePath = "${ConfigDefaults.DEFAULT_FOLDER}/$fileName",
-            serializer = Config.serializer()
-        )
+        return Config.readFromProject(root)
     }
 
     fun tryReadLibraryConfig(): LibraryConfig? {
         val root = readRoot()
-        return ConfigReader.tryReadFromProject(
-            root = root,
-            relativePath = "${ConfigDefaults.DEFAULT_FOLDER}/$fileName",
-            serializer = LibraryConfig.serializer()
-        )
-
+        return LibraryConfig.tryReadFromProject(root)
     }
 }
 
@@ -172,12 +161,8 @@ abstract class DevToolsTask : BaseTask() {
 
         when (input) {
             "1" -> ProjectActions.updateDevToolsVersion(root)
-            "2" -> {
-                println("TODO")
-            }
-
+            "2" -> println("TODO")
             "3" -> ProjectActions.runProjectRenamer()
-
             else -> println("Invalid input")
         }
 
