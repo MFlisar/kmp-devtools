@@ -14,8 +14,8 @@ class AppModuleConfig internal constructor(
 
     companion object {
         fun readManual(project: Project): AppModuleConfig {
-            val config = Config.read(project.rootProject)
-            val appConfig = AppConfig.read(project.rootProject)
+            val config = Config.readFromProject(project.rootDir)
+            val appConfig = AppConfig.readFromProject(project.rootDir)
             return AppModuleConfig(
                 project = project,
                 config = config,

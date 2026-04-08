@@ -1,24 +1,50 @@
 package com.michaelflisar.kmpdevtools.core
 
 import com.charleskorn.kaml.Yaml
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import java.io.File
 
-object ConfigReader {
+abstract class BaseConfig {
 
-    inline fun <reified T> readFromProject(
+    abstract class BaseConfigCompanion<T : BaseConfig>(
+        val fileName: String,
+        val serializer: KSerializer<T>,
+    ) {
+        fun readFromProject(root: File): T {
+            return ConfigReader.read(
+                root = root,
+                relativePath = "${ConfigDefaults.DEFAULT_FOLDER}/$fileName",
+                serializer = serializer
+            )
+        }
+
+        fun tryReadFromProject(root: File): T? {
+            return ConfigReader.tryRead(
+                file = File(root, "${ConfigDefaults.DEFAULT_FOLDER}/$fileName"),
+                serializer = serializer
+            )
+        }
+
+    }
+}
+
+
+internal object ConfigReader {
+
+    fun <T> readFromProject(
         root: File,
         relativePath: String,
         serializer: KSerializer<T>,
     ) = read(root, relativePath, serializer)
 
-    inline fun <reified T> tryReadFromProject(
+    fun <T> tryReadFromProject(
         root: File,
         relativePath: String,
         serializer: KSerializer<T>,
     ) = tryRead(File(root, relativePath), serializer)
 
-    inline fun <reified T> read(
+    fun <T> read(
         root: File,
         relativePath: String,
         serializer: KSerializer<T>,
@@ -26,13 +52,14 @@ object ConfigReader {
         return read(File(root, relativePath), serializer)
     }
 
-    inline fun <reified T> read(file: File, serializer: KSerializer<T>): T {
+    @OptIn(ExperimentalSerializationApi::class)
+    fun <T> read(file: File, serializer: KSerializer<T>): T {
         return try {
             tryRead(file, serializer)!!
         } catch (e: Exception) {
             e.printStackTrace()
-            throw kotlin.RuntimeException(
-                "Failed to read `${T::class.qualifiedName}` from path '${file.path}'",
+            throw RuntimeException(
+                "Failed to read from path '${file.path}' with serializer '${serializer.descriptor.serialName}'! See stacktrace for details.",
                 e
             )
         }

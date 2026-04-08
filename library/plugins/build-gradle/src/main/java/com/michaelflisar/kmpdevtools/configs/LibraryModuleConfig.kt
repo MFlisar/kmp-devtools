@@ -35,15 +35,15 @@ sealed class LibraryModuleConfig {
 
     companion object {
         fun read(project: Project): Library {
-            val config = Config.read(project.rootProject)
-            val libraryConfig = LibraryConfig.read(project.rootProject)
+            val config = Config.readFromProject(project.rootDir)
+            val libraryConfig = LibraryConfig.readFromProject(project.rootDir)
             val libraryModuleConfig = Library(project, config, libraryConfig)
             return libraryModuleConfig
         }
 
         fun readManual(project: Project): Manual {
-            val config = Config.read(project.rootProject)
-            val appConfig = AppConfig.read(project.rootProject)
+            val config = Config.readFromProject(project.rootDir)
+            val appConfig = AppConfig.readFromProject(project.rootDir)
             val libraryModuleConfig = Manual(project, config, appConfig)
             return libraryModuleConfig
         }
