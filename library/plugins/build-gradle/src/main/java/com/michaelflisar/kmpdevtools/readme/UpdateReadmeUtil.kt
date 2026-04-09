@@ -288,13 +288,6 @@ object UpdateReadmeUtil {
             appendLine()
             appendLine("$libraryName = \"<LATEST-VERSION>\"")
             appendLine()
-            if (nonPluginModules.isNotEmpty()) {
-                appendLine("[libraries]")
-                appendLine()
-                for (module in nonPluginModules) {
-                    appendLine("${libraryName}-${module.artifactId} = { module = \"${libraryConfig.maven.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
-                }
-            }
             if (pluginModules.isNotEmpty()) {
                 appendLine("[plugins]")
                 appendLine()
@@ -302,12 +295,18 @@ object UpdateReadmeUtil {
                     appendLine("${libraryName}-${module.artifactId} = { id = \"${libraryConfig.maven.groupId}.${module.artifactId}\", version.ref = \"$libraryName\" }")
                 }
             }
+            if (nonPluginModules.isNotEmpty()) {
+                if (pluginModules.isNotEmpty())
+                    appendLine()
+                appendLine("[libraries]")
+                appendLine()
+                for (module in nonPluginModules) {
+                    appendLine("${libraryName}-${module.artifactId} = { module = \"${libraryConfig.maven.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
+                }
+            }
+
         }
         val setupViaVersionCatalogue2 = buildString {
-            for (module in nonPluginModules) {
-                val key = "${libraryName}-${module.artifactId}".replace("-", ".")
-                appendLine("implementation(libs.$key)")
-            }
             if (pluginModules.isNotEmpty())
             {
                 appendLine("plugins {")
@@ -316,6 +315,14 @@ object UpdateReadmeUtil {
                     appendLine("    id(libs.$key)")
                 }
                 appendLine("}")
+            }
+            if (nonPluginModules.isNotEmpty()) {
+                if (pluginModules.isNotEmpty())
+                    appendLine()
+                for (module in nonPluginModules) {
+                    val key = "${libraryName}-${module.artifactId}".replace("-", ".")
+                    appendLine("implementation(libs.$key)")
+                }
             }
         }
 
