@@ -10,6 +10,7 @@ data class Config(
     val developer: Developer,
     val project: Project,
     val readme: Readme,
+    val settings: Settings = Settings()
 ) {
 
     companion object : ConfigReader<Config>(
@@ -28,9 +29,7 @@ data class Config(
     @Serializable
     class Project(
         val namespace: String,
-    ) {
-
-    }
+    )
 
     /*
      * readme:
@@ -51,4 +50,9 @@ data class Config(
             @SerialName("excluded-images") val excludedImages: List<String>,
         )
     }
+
+    @Serializable
+    class Settings(
+        @SerialName("log-dependencies") val logDependencies: Boolean = false
+    )
 }

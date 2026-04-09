@@ -5,8 +5,10 @@ import com.codingfeline.buildkonfig.gradle.BuildKonfigExtension
 import com.codingfeline.buildkonfig.gradle.TargetConfigDsl
 import com.michaelflisar.composechangelog.format.ChangelogVersionFormatter
 import com.michaelflisar.composechangelog.format.DefaultVersionFormatter
+import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
 import com.michaelflisar.kmpdevtools.core.Platform
 import com.michaelflisar.kmpdevtools.core.configs.AppConfig
+import com.michaelflisar.kmpdevtools.core.configs.Config
 import org.gradle.api.NamedDomainObjectContainer
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 
@@ -133,11 +135,12 @@ class SourceSetPlatformDsl internal constructor(
 }
 
 fun setupDependencies(
+    module: LibraryModuleConfig,
     buildTargets: Targets,
     sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
-    log: Boolean = true,
     block: SourceSetPlatformDsl.() -> Unit,
 ) {
+    val log = module.config.settings.logDependencies
     val dsl = SourceSetPlatformDsl(buildTargets, sourceSets)
     with(dsl, block)
     // wenn wir alle source sets zu platform zuordnungen haben, können wir die dependencies setzen
