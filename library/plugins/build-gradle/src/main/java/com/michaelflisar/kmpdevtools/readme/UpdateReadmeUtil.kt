@@ -222,8 +222,7 @@ object UpdateReadmeUtil {
                         if (module.plugin) {
                             "-"
                         } else {
-                            if (platforms.map { it.lowercase() }
-                                    .contains(platform.lowercase())) "✅" else "❌"
+                            if (platforms.map { it.lowercase() }.contains(platform.lowercase())) "✅" else "❌"
                         }
                     } + module.description
                 appendLine("| " + row.joinToString(" | ") + " |")
