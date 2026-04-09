@@ -213,7 +213,7 @@ object UpdateReadmeUtil {
 
         // 4) create supported platforms table
         val supportedPlatformsTable = buildString {
-            val header = listOf("Module") + allSupportedPlatforms
+            val header = listOf("Module") + allSupportedPlatforms + "Notes"
             appendLine("| " + header.joinToString(" | ") + " |")
             appendLine("|" + header.joinToString("|") { "---" } + "|")
             for ((module, platforms) in supportedPlatforms) {
@@ -221,7 +221,7 @@ object UpdateReadmeUtil {
                     listOf(module.artifactId) + allSupportedPlatformsLowercase.map { platform ->
                         if (platforms.map { it.lowercase() }
                                 .contains(platform.lowercase())) "✅" else "❌"
-                    }
+                    } + module.description
                 appendLine("| " + row.joinToString(" | ") + " |")
             }
         }.takeIf { nonPluginModules.isNotEmpty() } ?: ""
