@@ -4,6 +4,7 @@ import com.codingfeline.buildkonfig.compiler.FieldSpec.Type
 import com.codingfeline.buildkonfig.gradle.BuildKonfigExtension
 import com.codingfeline.buildkonfig.gradle.TargetConfigDsl
 import com.michaelflisar.composechangelog.format.ChangelogVersionFormatter
+import com.michaelflisar.composechangelog.format.DefaultVersionFormatter
 import com.michaelflisar.kmpdevtools.core.Platform
 import com.michaelflisar.kmpdevtools.core.configs.AppConfig
 import org.gradle.api.NamedDomainObjectContainer
@@ -147,7 +148,7 @@ fun setupDependencies(
 
 fun BuildKonfigExtension.setupBuildKonfig(
     appConfig: AppConfig,
-    versionFormatter: ChangelogVersionFormatter? = null,
+    versionFormatter: ChangelogVersionFormatter? = DefaultVersionFormatter(DefaultVersionFormatter.Format.MajorMinorPatch),
     exposeObjectWithName: String = "BuildKonfig",
     config: TargetConfigDsl.() -> Unit = {}
 ) {

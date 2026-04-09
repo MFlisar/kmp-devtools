@@ -4,6 +4,7 @@ import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
 import com.android.build.gradle.internal.crash.afterEvaluate
 import com.michaelflisar.composechangelog.format.ChangelogVersionFormatter
+import com.michaelflisar.composechangelog.format.DefaultVersionFormatter
 import com.michaelflisar.kmpdevtools.configs.AndroidAppConfig
 import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
@@ -151,7 +152,7 @@ object BuildFileUtil {
         buildConfig: Boolean,
         checkDebugKeyStoreProperty: Boolean,
         setupBuildTypesDebugAndRelease: Boolean,
-        versionFormatter: ChangelogVersionFormatter,
+        versionFormatter: ChangelogVersionFormatter = DefaultVersionFormatter(DefaultVersionFormatter.Format.MajorMinorPatch),
         buildTypeDebugSuffix: String = ".debug",
     ) {
         appModuleConfig.project.extensions.configure(ApplicationExtension::class.java) {
