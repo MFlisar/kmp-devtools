@@ -3,6 +3,7 @@ package com.michaelflisar.kmpdevtools
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
 import com.android.build.gradle.internal.crash.afterEvaluate
+import com.michaelflisar.composechangelog.format.ChangelogVersionFormatter
 import com.michaelflisar.kmpdevtools.configs.AndroidAppConfig
 import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
@@ -150,6 +151,7 @@ object BuildFileUtil {
         buildConfig: Boolean,
         checkDebugKeyStoreProperty: Boolean,
         setupBuildTypesDebugAndRelease: Boolean,
+        versionFormatter: ChangelogVersionFormatter,
         buildTypeDebugSuffix: String = ".debug",
     ) {
         appModuleConfig.project.extensions.configure(ApplicationExtension::class.java) {
@@ -167,7 +169,7 @@ object BuildFileUtil {
 
                 this.minSdk = androidAppConfig.minSdk.get().toInt()
                 this.targetSdk = androidAppConfig.targetSdk.get().toInt()
-                this.versionCode = appModuleConfig.appConfig.versionCode
+                this.versionCode = versionFormatter.parseVersion(appModuleConfig.appConfig.versionName)
                 this.versionName = appModuleConfig.appConfig.versionName
 
                 if (generateResAppName) {

@@ -8,11 +8,12 @@ import kotlinx.serialization.Serializable
 data class AppConfig(
     val name: String,
     @SerialName("namespace") val namespace: String,
-    @SerialName("version-code") val versionCode: Int,
     @SerialName("version-name") val versionName: String,
 ) {
     companion object : ConfigReader<AppConfig>(
         ConfigDefaults.FILE_APP_CONFIG,
         { AppConfig.serializer() }
     )
+
+
 }

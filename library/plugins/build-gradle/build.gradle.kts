@@ -56,6 +56,8 @@ dependencies {
 
     implementation(deps.yaml)
 
+    implementation(deps.composechangelog.shared)
+
     implementation(gradleApi())
     implementation(gradleKotlinDsl())
 

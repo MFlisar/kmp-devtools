@@ -209,14 +209,7 @@ class Targets(
         }
     }
 
-    /**
-     * Config Android app target in the given project with the given configuration.
-     *
-     * @param project The Gradle project to configure.
-     * @param config The configuration to use for the Android target.
-     * @param appConfig The app configuration to use for the Android target.
-     * @param configure A lambda to configure the Android target.
-     */
+    /*
     private fun setupAndroidAppTarget(
         extension: ApplicationExtension,
         project: Project,
@@ -259,7 +252,7 @@ class Targets(
 
             }
         }
-    }
+    }*/
 
     /**
      * Config iOS targets in the given project with the given configuration.

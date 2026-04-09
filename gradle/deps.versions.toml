@@ -1,5 +1,8 @@
 [versions]
 
+# mflisar
+composechangelog =   		"4.0.0-alpha02"
+
 # scripts
 yaml =                          "0.83.0"
 ktoml-core =                    "0.7.0"
@@ -7,6 +10,9 @@ ktoml-file =                    "0.7.0"
 jsoup =                         "1.21.1"
 
 [libraries]
+
+# mflisar
+composechangelog-shared =           { module = "io.github.mflisar.composechangelog:shared",      			version.ref = "composechangelog" }
 
 # scripts
 yaml =                              { module = "com.charleskorn.kaml:kaml",                                 version.ref = "yaml" }
