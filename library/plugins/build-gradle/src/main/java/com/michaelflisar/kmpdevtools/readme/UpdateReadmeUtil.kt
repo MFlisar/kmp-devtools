@@ -219,8 +219,12 @@ object UpdateReadmeUtil {
             for ((module, platforms) in supportedPlatforms) {
                 val row =
                     listOf(module.artifactId) + allSupportedPlatformsLowercase.map { platform ->
-                        if (platforms.map { it.lowercase() }
-                                .contains(platform.lowercase())) "✅" else "❌"
+                        if (module.plugin) {
+                            "-"
+                        } else {
+                            if (platforms.map { it.lowercase() }
+                                    .contains(platform.lowercase())) "✅" else "❌"
+                        }
                     } + module.description
                 appendLine("| " + row.joinToString(" | ") + " |")
             }
