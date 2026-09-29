@@ -62,12 +62,15 @@ object Launch4J {
         val launch4jFolder =
             project.layout.buildDirectory.dir(config.outputDirName)
 
+        val launch4jDirectory =
+            launch4jFolder.get().asFile
+
         val outputDirectory =
             outputConfig.directory
-                ?: launch4jFolder.get().asFile
+                ?: launch4jDirectory
 
         val needsRelocation =
-            outputDirectory.canonicalFile != launch4jFolder.get().asFile.canonicalFile
+            outputDirectory.canonicalFile != launch4jDirectory.canonicalFile
 
         val launch4jTask = project.tasks.register(
             "${taskName}Generate",
@@ -84,45 +87,46 @@ object Launch4J {
 
                     jarFiles.set(
                         project.files(
-                            project.file(
-                                "${config.jarFolder}/${config.mainJarFileName}"
-                            )
+                            "${config.jarFolder}/${config.mainJarFileName}"
                         )
                     )
 
                     classpath.set(
-                        project.fileTree(config.jarFolder) {
-                            include("*.jar")
-                            exclude(config.mainJarFileName)
+                        project.provider {
+                            project.fileTree(config.jarFolder) {
+                                include("*.jar")
+                                exclude(config.mainJarFileName)
+                            }.files.map {
+                                "lib/${it.name}"
+                            }.toSet()
                         }
-                            .files
-                            .map { "lib/${it.name}" }
-                            .toSet()
                     )
                 }
 
                 is Config.Fat -> {
 
                     setJarTask(
-                        project.tasks.getByName(config.jarTask)
+                        project.tasks.named(config.jarTask).get()
                     )
                 }
             }
 
             // setupLaunch4J
-            val now = LocalDateTime.now()
-            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            doFirst {
+                val now = LocalDateTime.now()
+                val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                description = "${appModuleConfig.appConfig.name} - Build at ${now.format(formatter)}"
+                copyright.set("©${now.year} ${appModuleConfig.config.developer.name}. All rights reserved.")
+            }
             mainClassName.set(desktopAppConfig.mainClass)
             icon.set(project.file(desktopAppConfig.ico).absolutePath)
             outfile.set(outputFileName)
             productName.set(appModuleConfig.appConfig.name)
             version.set(appModuleConfig.appConfig.versionName)
             textVersion.set(appModuleConfig.appConfig.versionName)
-            description = "${appModuleConfig.appConfig.name} - Build at ${now.format(formatter)}"
-            copyright.set("©${now.year} ${appModuleConfig.config.developer.name}. All rights reserved.")
             companyName.set(appModuleConfig.config.developer.name)
-
             jreMinVersion.set(appModuleConfig.config.javaVersion)
+
             configure()
         }
 
@@ -131,11 +135,10 @@ object Launch4J {
             is Config.Thin -> {
 
                 project.tasks.register(
-                    "${taskName}CopyJars",
-                    Copy::class.java
+                    "${taskName}SyncJars",
+                    Sync::class.java
                 ) {
-
-                    dependsOn(launch4jTask)
+                    dependsOn(launch4jTask, config.jarTask)
 
                     from(project.file(config.jarFolder)) {
                         include("*.jar")
@@ -161,7 +164,7 @@ object Launch4J {
             ) {
                 dependsOn(previousTask)
 
-                from(launch4jFolder)
+                from(launch4jDirectory)
                 into(outputDirectory)
 
                 doLast {
