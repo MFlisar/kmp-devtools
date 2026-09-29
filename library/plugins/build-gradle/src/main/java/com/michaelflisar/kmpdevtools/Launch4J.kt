@@ -3,7 +3,6 @@ package com.michaelflisar.kmpdevtools
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
 import com.michaelflisar.kmpdevtools.configs.DesktopAppConfig
 import edu.sc.seis.launch4j.tasks.Launch4jLibraryTask
-import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Sync
 import java.io.File
 import java.time.LocalDateTime
@@ -112,12 +111,8 @@ object Launch4J {
             }
 
             // setupLaunch4J
-            doFirst {
-                val now = LocalDateTime.now()
-                val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                description = "${appModuleConfig.appConfig.name} - Build at ${now.format(formatter)}"
-                copyright.set("©${now.year} ${appModuleConfig.config.developer.name}. All rights reserved.")
-            }
+            val now = LocalDateTime.now()
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
             mainClassName.set(desktopAppConfig.mainClass)
             icon.set(project.file(desktopAppConfig.ico).absolutePath)
             outfile.set(outputFileName)
@@ -125,6 +120,8 @@ object Launch4J {
             version.set(appModuleConfig.appConfig.versionName)
             textVersion.set(appModuleConfig.appConfig.versionName)
             companyName.set(appModuleConfig.config.developer.name)
+            description = "${appModuleConfig.appConfig.name} - Build at ${now.format(formatter)}"
+            copyright.set("©${now.year} ${appModuleConfig.config.developer.name}. All rights reserved.")
             jreMinVersion.set(appModuleConfig.config.javaVersion)
 
             configure()
