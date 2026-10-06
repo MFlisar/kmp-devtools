@@ -1,4 +1,4 @@
-name: Publish Module to GitHub
+name: Publish Module
 
 on:
   workflow_call:
@@ -15,8 +15,24 @@ on:
         required: true
         type: string
 
+      libraryName:
+        required: true
+        type: string
+
+      mavenFolder:
+        required: true
+        type: string
+
+      groupId:
+        required: true
+        type: string
+
+      mavenRepo:
+        required: true
+        type: string
+
     secrets:
-      MFLISAR_MAVEN_REPO_TOKEN:
+      mavenRepoToken:
         required: true
 
 permissions:
@@ -36,8 +52,8 @@ jobs:
       - name: Checkout MavenRepo
         uses: actions/checkout@v4
         with:
-          repository: MFlisar/MavenRepo
-          token: ${{ secrets.MFLISAR_MAVEN_REPO_TOKEN }}
+          repository: ${{ inputs.mavenRepo }}
+          token: ${{ secrets.mavenRepoToken }}
           path: mavenRepo
 
       - uses: actions/setup-java@v5
@@ -59,13 +75,15 @@ jobs:
 
           MODULE_PATH=$(echo "$LINE" | cut -d'|' -f2)
           GRADLE_PATH=$(echo "$LINE" | cut -d'|' -f3)
+          GROUP_PATH=$(echo "${{ inputs.groupId }}" | tr '.' '/')
 
           echo "module_path=$MODULE_PATH" >> $GITHUB_OUTPUT
           echo "gradle_path=$GRADLE_PATH" >> $GITHUB_OUTPUT
+          echo "group_path=$GROUP_PATH" >> $GITHUB_OUTPUT
 
       - name: Check version
         run: |
-          ARTIFACT_DIR="mavenRepo/Toolbox/io/github/mflisar/toolbox/${{ inputs.artifactId }}"
+          ARTIFACT_DIR="mavenRepo/${{ inputs.mavenFolder }}/${{ steps.module.outputs.group_path }}/${{ inputs.artifactId }}"
           VERSION="${{ inputs.version }}"
 
           if [ ! -d "$ARTIFACT_DIR" ]; then
@@ -77,7 +95,6 @@ jobs:
             exit 1
           fi
 
-          # prerelease
           if [[ "$VERSION" == *-* ]]; then
             BASE_VERSION="${VERSION%%-*}"
 
@@ -110,7 +127,6 @@ jobs:
             exit 0
           fi
 
-          # stable release must be newest
           ALL_VERSIONS=$(
             find "$ARTIFACT_DIR" \
               -mindepth 1 \
@@ -150,11 +166,104 @@ jobs:
 
       - name: Copy artifacts
         run: |
-          mkdir -p mavenRepo/Toolbox
+          mkdir -p "mavenRepo/${{ inputs.mavenFolder }}"
 
           cp -R \
             "${{ steps.module.outputs.module_path }}/build/maven-repo/"* \
-            mavenRepo/Toolbox/
+            "mavenRepo/${{ inputs.mavenFolder }}/"
+
+      - name: Update README
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          from datetime import datetime
+
+          README = Path("mavenRepo/README.md")
+
+          library = "${{ inputs.libraryName }}"
+          module = "${{ inputs.artifactId }}"
+          version = "${{ inputs.version }}"
+          date = datetime.utcnow().strftime("%Y-%m-%d")
+
+          if README.exists():
+              content = README.read_text(encoding="utf-8")
+          else:
+              content = (
+                  "# Latest Releases\n\n"
+                  "| Library | Module | Version |\n"
+                  "| -------- | -------- | -------- |\n\n"
+                  "# Releases\n\n"
+                  "| Date | Library | Module | Version |\n"
+                  "| -------- | -------- | -------- | -------- |\n"
+              )
+
+          latest = {}
+          releases = []
+
+          section = None
+
+          for line in content.splitlines():
+              line = line.strip()
+
+              if line == "# Latest Releases":
+                  section = "latest"
+                  continue
+
+              if line == "# Releases":
+                  section = "releases"
+                  continue
+
+              if not line.startswith("|"):
+                  continue
+
+              if "Library" in line or "Date" in line:
+                  continue
+
+              if "---" in line:
+                  continue
+
+              cols = [c.strip() for c in line.strip("|").split("|")]
+
+              if section == "latest" and len(cols) == 3:
+                  latest[(cols[0], cols[1])] = cols[2]
+
+              elif section == "releases" and len(cols) == 4:
+                  releases.append(cols)
+
+          # update latest version
+          latest[(library, module)] = version
+
+          # append release history
+          releases.append([date, library, module, version])
+
+          latest_rows = sorted(
+              [(l, m, v) for (l, m), v in latest.items()],
+              key=lambda x: (x[0].lower(), x[1].lower())
+          )
+
+          output = [
+              "# Latest Releases",
+              "",
+              "| Library | Module | Version |",
+              "| -------- | -------- | -------- |",
+          ]
+
+          for l, m, v in latest_rows:
+              output.append(f"| {l} | {m} | {v} |")
+
+          output.extend([
+              "",
+              "# Releases",
+              "",
+              "| Date | Library | Module | Version |",
+              "| -------- | -------- | -------- | -------- |",
+          ])
+
+          for d, l, m, v in releases:
+              output.append(f"| {d} | {l} | {m} | {v} |")
+
+          README.write_text("\n".join(output) + "\n", encoding="utf-8")
+          PY
 
       - name: Commit and Push
         run: |
@@ -170,5 +279,5 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Publish ${{ inputs.artifactId }} ${{ inputs.version }}"
+          git commit -m "Publish ${{ inputs.libraryName }}:${{ inputs.artifactId }} ${{ inputs.version }}"
           git push
