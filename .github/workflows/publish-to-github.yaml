@@ -1,0 +1,174 @@
+name: Publish Module to GitHub
+
+on:
+  workflow_call:
+    inputs:
+      artifactId:
+        required: true
+        type: string
+
+      version:
+        required: true
+        type: string
+
+      moduleConfig:
+        required: true
+        type: string
+
+    secrets:
+      MFLISAR_MAVEN_REPO_TOKEN:
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  MODULE_CONFIG: ${{ inputs.moduleConfig }}
+
+jobs:
+  publish:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Library
+        uses: actions/checkout@v4
+
+      - name: Checkout MavenRepo
+        uses: actions/checkout@v4
+        with:
+          repository: MFlisar/MavenRepo
+          token: ${{ secrets.MFLISAR_MAVEN_REPO_TOKEN }}
+          path: mavenRepo
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve module
+        id: module
+        run: |
+          LINE=$(echo "$MODULE_CONFIG" | grep "^${{ inputs.artifactId }}|")
+
+          if [ -z "$LINE" ]; then
+            echo "Unknown artifact: ${{ inputs.artifactId }}"
+            exit 1
+          fi
+
+          MODULE_PATH=$(echo "$LINE" | cut -d'|' -f2)
+          GRADLE_PATH=$(echo "$LINE" | cut -d'|' -f3)
+
+          echo "module_path=$MODULE_PATH" >> $GITHUB_OUTPUT
+          echo "gradle_path=$GRADLE_PATH" >> $GITHUB_OUTPUT
+
+      - name: Check version
+        run: |
+          ARTIFACT_DIR="mavenRepo/Toolbox/io/github/mflisar/toolbox/${{ inputs.artifactId }}"
+          VERSION="${{ inputs.version }}"
+
+          if [ ! -d "$ARTIFACT_DIR" ]; then
+            exit 0
+          fi
+
+          if [ -d "$ARTIFACT_DIR/$VERSION" ]; then
+            echo "Version already exists"
+            exit 1
+          fi
+
+          # prerelease
+          if [[ "$VERSION" == *-* ]]; then
+            BASE_VERSION="${VERSION%%-*}"
+
+            LATEST_STABLE=$(
+              find "$ARTIFACT_DIR" \
+                -mindepth 1 \
+                -maxdepth 1 \
+                -type d \
+                -exec basename {} \; \
+              | grep -E '^[0-9]+(\.[0-9]+)*$' \
+              | sort -V \
+              | tail -n 1
+            )
+
+            if [ -n "$LATEST_STABLE" ]; then
+              NEWEST=$(
+                printf '%s\n%s\n' \
+                  "$LATEST_STABLE" \
+                  "$BASE_VERSION" \
+                | sort -V \
+                | tail -n 1
+              )
+
+              if [ "$NEWEST" != "$BASE_VERSION" ]; then
+                echo "Pre-release must target latest version or newer. Latest stable: $LATEST_STABLE"
+                exit 1
+              fi
+            fi
+
+            exit 0
+          fi
+
+          # stable release must be newest
+          ALL_VERSIONS=$(
+            find "$ARTIFACT_DIR" \
+              -mindepth 1 \
+              -maxdepth 1 \
+              -type d \
+              -exec basename {} \; \
+            | sed 's/-.*//'
+          )
+
+          if [ -n "$ALL_VERSIONS" ]; then
+            NEWEST=$(
+              printf '%s\n%s\n' \
+                "$ALL_VERSIONS" \
+                "$VERSION" \
+              | sort -V \
+              | tail -n 1
+            )
+
+            if [ "$NEWEST" != "$VERSION" ]; then
+              echo "Release version must be newest"
+              exit 1
+            fi
+          fi
+
+      - name: Publish
+        run: |
+          ./gradlew \
+            ${{ steps.module.outputs.gradle_path }}:publishAllPublicationsToLocalMavenRepoRepository
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Verify publication output
+        run: |
+          find "${{ steps.module.outputs.module_path }}/build" \
+            -type d \
+            -name maven-repo
+
+      - name: Copy artifacts
+        run: |
+          mkdir -p mavenRepo/Toolbox
+
+          cp -R \
+            "${{ steps.module.outputs.module_path }}/build/maven-repo/"* \
+            mavenRepo/Toolbox/
+
+      - name: Commit and Push
+        run: |
+          cd mavenRepo
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+
+          git commit -m "Publish ${{ inputs.artifactId }} ${{ inputs.version }}"
+          git push

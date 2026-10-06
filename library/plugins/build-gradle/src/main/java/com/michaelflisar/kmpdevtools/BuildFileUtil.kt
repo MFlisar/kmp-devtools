@@ -18,6 +18,7 @@ import com.vanniktech.maven.publish.SourcesJar
 import edu.sc.seis.launch4j.tasks.Launch4jLibraryTask
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
+import org.gradle.api.publish.PublishingExtension
 import org.jetbrains.compose.desktop.application.dsl.JvmApplication
 import org.jetbrains.compose.desktop.application.dsl.JvmApplicationDistributions
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
@@ -61,6 +62,54 @@ object BuildFileUtil {
         sign: Boolean = System.getenv("CI")?.toBoolean() == true,
         version: String = System.getenv("TAG") ?: "LOCAL-SNAPSHOT",
     ) {
+        configurePublish(
+            libraryModuleConfig = libraryModuleConfig,
+            platform = platform,
+            version = version
+        ) {
+            publishToMavenCentral(autoReleaseOnMavenCentral(version))
+
+            if (sign) {
+                signAllPublications()
+            }
+        }
+    }
+
+    fun setupLocalMavenPublish(
+        libraryModuleConfig: LibraryModuleConfig.Library,
+        platform: Platform = KotlinMultiplatform(
+            javadocJar = JavadocJar.Dokka("dokkaGenerateHtml"),
+            sourcesJar = SourcesJar.Sources()
+        ),
+        version: String,
+    ) {
+        configurePublish(
+            libraryModuleConfig = libraryModuleConfig,
+            platform = platform,
+            version = version
+        )
+
+        libraryModuleConfig.project.extensions.configure(PublishingExtension::class.java) {
+            repositories {
+                maven {
+                    name = "LocalMavenRepo"
+                    url = libraryModuleConfig.project.layout.buildDirectory
+                        .dir("maven-repo")
+                        .get()
+                        .asFile
+                        .toURI()
+                }
+            }
+        }
+    }
+
+
+    private fun configurePublish(
+        libraryModuleConfig: LibraryModuleConfig.Library,
+        platform: Platform,
+        version: String,
+        block: MavenPublishBaseExtension.() -> Unit = {},
+    ) {
         val module = libraryModuleConfig.libraryConfig.getModuleForProject(
             libraryModuleConfig.project.rootDir,
             libraryModuleConfig.project.projectDir
@@ -68,6 +117,7 @@ object BuildFileUtil {
 
         libraryModuleConfig.project.extensions.configure(MavenPublishBaseExtension::class.java) {
             configure(platform)
+
             coordinates(
                 groupId = libraryModuleConfig.libraryConfig.maven.groupId,
                 artifactId = module.artifactId,
@@ -78,7 +128,11 @@ object BuildFileUtil {
                 name.set(libraryModuleConfig.libraryConfig.library.name)
                 description.set(module.libraryDescription(libraryModuleConfig.libraryConfig))
                 inceptionYear.set(libraryModuleConfig.libraryConfig.library.release.toString())
-                url.set(libraryModuleConfig.libraryConfig.library.getRepoLink(libraryModuleConfig.config.developer))
+                url.set(
+                    libraryModuleConfig.libraryConfig.library.getRepoLink(
+                        libraryModuleConfig.config.developer
+                    )
+                )
 
                 licenses {
                     license {
@@ -109,13 +163,7 @@ object BuildFileUtil {
                 }
             }
 
-            // Configure publishing to Maven Central
-            publishToMavenCentral(autoReleaseOnMavenCentral(version))
-
-            // Enable GPG signing for all publications
-            if (sign) {
-                signAllPublications()
-            }
+            block()
         }
     }
 
