@@ -67,9 +67,10 @@ jobs:
         run: |
           mkdir -p "${{ inputs.artifactsPath }}"
 
-          cp -R \
-            "${{ steps.output.outputs.repo_dir }}/"* \
-            "${{ inputs.artifactsPath }}/"
+          find . -type d -name maven-repo | while read repo; do
+            echo "Copying $repo"
+            cp -R "$repo/"* "${{ inputs.artifactsPath }}/"
+          done
 
       - name: Update ARTIFACTS.md
         run: |
