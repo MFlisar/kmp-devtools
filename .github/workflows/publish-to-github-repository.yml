@@ -68,24 +68,28 @@ jobs:
         run: |
           BRANCH="${{ inputs.artifactsBranch }}"
 
-          git fetch origin "$BRANCH" || true
+          git fetch origin "$BRANCH" >/dev/null 2>&1 || true
 
           if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
             git checkout "$BRANCH"
             git pull origin "$BRANCH"
           else
             git checkout --orphan "$BRANCH"
-
-            git rm -rf . || true
+            git rm -rf . 2>/dev/null || true
 
             echo "# Artifact Releases" > README.md
             echo "" >> README.md
             echo "| Date | Version |" >> README.md
             echo "| -------- | -------- |" >> README.md
 
-            git add .
+            git add README.md
             git commit -m "Initialize artifact branch"
           fi
+
+      - name: Version Info
+        run: |
+          echo "VERSION=${{ inputs.version }}"
+          echo "TAG=${{ github.event.release.tag_name }}"
 
       - name: Check version
         run: |
@@ -113,26 +117,25 @@ jobs:
 
       - name: Prepare artifact workspace
         run: |
-          mkdir -p .artifacts-work
-
+          ARTIFACT_DIR="$RUNNER_TEMP/artifacts"
+      
+          rm -rf "$ARTIFACT_DIR"
+          mkdir -p "$ARTIFACT_DIR"
+      
           find . -type d -name maven-repo | while read repo; do
             echo "Copying $repo"
-            cp -R "$repo/"* .artifacts-work/
+            cp -R "$repo/"* "$ARTIFACT_DIR/"
           done
 
       - name: Switch to artifact branch
         run: |
           BRANCH="${{ inputs.artifactsBranch }}"
-
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            git checkout "$BRANCH"
-          else
-            git checkout --orphan "$BRANCH"
-          fi
+          
+          git checkout "$BRANCH"
 
       - name: Copy artifacts
         run: |
-          cp -R .artifacts-work/* .
+          cp -R "$RUNNER_TEMP/artifacts/"* .
 
       - name: Update README
         run: |
@@ -141,7 +144,7 @@ jobs:
           from datetime import datetime
 
           version = "${{ inputs.version }}"
-          date = datetime.utcnow().strftime("%Y-%m-%d")
+          date = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
           file = Path("README.md")
 
