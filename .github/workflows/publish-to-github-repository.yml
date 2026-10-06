@@ -1,0 +1,120 @@
+name: Publish to GitHub Repository
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+      artifactsPath:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Check version
+        run: |
+          VERSION="${{ inputs.version }}"
+          ARTIFACTS_FILE="${{ inputs.artifactsPath }}/ARTIFACTS.md"
+
+          if [ ! -f "$ARTIFACTS_FILE" ]; then
+            exit 0
+          fi
+
+          if grep -F "| $VERSION |" "$ARTIFACTS_FILE" >/dev/null; then
+            echo "Version already exists"
+            exit 1
+          fi
+
+      - name: Publish
+        run: |
+          ./gradlew publishAllPublicationsToLocalMavenRepoRepository
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Find publication output
+        id: output
+        run: |
+          REPO_DIR=$(find . -type d -name maven-repo | head -n 1)
+
+          if [ -z "$REPO_DIR" ]; then
+            echo "maven-repo not found"
+            exit 1
+          fi
+
+          echo "repo_dir=$REPO_DIR" >> $GITHUB_OUTPUT
+
+      - name: Copy artifacts
+        run: |
+          mkdir -p "${{ inputs.artifactsPath }}"
+
+          cp -R \
+            "${{ steps.output.outputs.repo_dir }}/"* \
+            "${{ inputs.artifactsPath }}/"
+
+      - name: Update ARTIFACTS.md
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          from datetime import datetime
+
+          version = "${{ inputs.version }}"
+          date = datetime.utcnow().strftime("%Y-%m-%d")
+
+          file = Path("${{ inputs.artifactsPath }}/ARTIFACTS.md")
+
+          if file.exists():
+              content = file.read_text(encoding="utf-8")
+          else:
+              content = (
+                  "# Artifact Releases\n\n"
+                  "| Date | Version |\n"
+                  "| -------- | -------- |\n"
+              )
+
+          lines = content.splitlines()
+
+          output = []
+          inserted = False
+
+          for line in lines:
+              output.append(line)
+
+              if not inserted and line == "| -------- | -------- |":
+                  output.append(f"| {date} | {version} |")
+                  inserted = True
+
+          file.write_text("\n".join(output) + "\n", encoding="utf-8")
+          PY
+
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+
+          git commit -m "Publish ${{ inputs.version }}"
+          git push
