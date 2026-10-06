@@ -45,7 +45,7 @@ jobs:
 
       - name: Publish
         run: |
-          ./gradlew publishAllPublicationsToLocalMavenRepoRepository
+          ./gradlew publishAllPublicationsToGitHubRepository
         env:
           VERSION: ${{ inputs.version }}
 

@@ -92,7 +92,7 @@ object BuildFileUtil {
         libraryModuleConfig.project.extensions.configure(PublishingExtension::class.java) {
             repositories {
                 maven {
-                    name = "LocalMavenRepo"
+                    name = "GitHub"
                     url = libraryModuleConfig.project.layout.buildDirectory
                         .dir("maven-repo")
                         .get()
