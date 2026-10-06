@@ -81,7 +81,7 @@ object BuildFileUtil {
             javadocJar = JavadocJar.Dokka("dokkaGenerateHtml"),
             sourcesJar = SourcesJar.Sources()
         ),
-        version: String,
+        version: String = System.getenv("VERSION") ?: "LOCAL-SNAPSHOT"
     ) {
         configurePublish(
             libraryModuleConfig = libraryModuleConfig,
