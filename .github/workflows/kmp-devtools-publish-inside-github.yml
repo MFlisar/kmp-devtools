@@ -1,4 +1,4 @@
-name: Publish Module
+name: Publish Module Inside Github
 
 on:
   workflow_call:
@@ -15,25 +15,13 @@ on:
         required: true
         type: string
 
-      libraryName:
-        required: true
-        type: string
-
-      mavenFolder:
-        required: true
-        type: string
-
       groupId:
         required: true
         type: string
 
-      mavenRepo:
+      artifactsPath:
         required: true
         type: string
-
-    secrets:
-      mavenRepoToken:
-        required: true
 
 permissions:
   contents: write
@@ -48,13 +36,6 @@ jobs:
     steps:
       - name: Checkout Library
         uses: actions/checkout@v4
-
-      - name: Checkout MavenRepo
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.mavenRepo }}
-          token: ${{ secrets.mavenRepoToken }}
-          path: mavenRepo
 
       - uses: actions/setup-java@v5
         with:
@@ -83,7 +64,7 @@ jobs:
 
       - name: Check version
         run: |
-          ARTIFACT_DIR="mavenRepo/${{ inputs.mavenFolder }}/${{ steps.module.outputs.group_path }}/${{ inputs.artifactId }}"
+          ARTIFACT_DIR="${{ inputs.artifactsPath }}/${{ steps.module.outputs.group_path }}/${{ inputs.artifactId }}"
           VERSION="${{ inputs.version }}"
 
           if [ ! -d "$ARTIFACT_DIR" ]; then
@@ -166,11 +147,10 @@ jobs:
 
       - name: Copy artifacts
         run: |
-          mkdir -p "mavenRepo/${{ inputs.mavenFolder }}"
-
+          mkdir -p "${{ inputs.artifactsPath }}"
           cp -R \
             "${{ steps.module.outputs.module_path }}/build/maven-repo/"* \
-            "mavenRepo/${{ inputs.mavenFolder }}/"
+            "${{ inputs.artifactsPath }}/"
 
       - name: Update README
         run: |
@@ -178,9 +158,8 @@ jobs:
           from pathlib import Path
           from datetime import datetime
 
-          README = Path("mavenRepo/README.md")
+          README = Path("${{ inputs.artifactsPath }}/ARTIFACTS.md")
 
-          library = "${{ inputs.libraryName }}"
           module = "${{ inputs.artifactId }}"
           version = "${{ inputs.version }}"
           date = datetime.utcnow().strftime("%Y-%m-%d")
@@ -190,11 +169,11 @@ jobs:
           else:
               content = (
                   "# Latest Releases\n\n"
-                  "| Library | Module | Version |\n"
-                  "| -------- | -------- | -------- |\n\n"
+                  "| Module | Version |\n"
+                  "| -------- | -------- |\n\n"
                   "# Releases\n\n"
-                  "| Date | Library | Module | Version |\n"
-                  "| -------- | -------- | -------- | -------- |\n"
+                  "| Date | Module | Version |\n"
+                  "| -------- | -------- | -------- |\n"
               )
 
           latest = {}
@@ -216,68 +195,66 @@ jobs:
               if not line.startswith("|"):
                   continue
 
-              if "Library" in line or "Date" in line:
-                  continue
+              if "Module" in line or "Date" in line:
+                continue
 
               if "---" in line:
                   continue
 
               cols = [c.strip() for c in line.strip("|").split("|")]
 
-              if section == "latest" and len(cols) == 3:
-                  latest[(cols[0], cols[1])] = cols[2]
-
-              elif section == "releases" and len(cols) == 4:
-                  releases.append(cols)
+              if section == "latest" and len(cols) == 2:
+                  latest[cols[0]] = cols[1]
+              
+              elif section == "releases" and len(cols) == 3:
+                releases.append(cols)
 
           # update latest version
-          latest[(library, module)] = version
+          latest[module] = version
 
           # append release history
-          releases.append([date, library, module, version])
-
+          releases.append([date, module, version])
+          
           latest_rows = sorted(
-              [(l, m, v) for (l, m), v in latest.items()],
-              key=lambda x: (x[0].lower(), x[1].lower())
+            latest.items(),
+            key=lambda x: x[0].lower()
           )
 
           output = [
               "# Latest Releases",
               "",
-              "| Library | Module | Version |",
-              "| -------- | -------- | -------- |",
+              "| Module | Version |",
+              "| -------- | -------- |",
           ]
 
-          for l, m, v in latest_rows:
-              output.append(f"| {l} | {m} | {v} |")
+          for m, v in latest_rows:
+              output.append(f"| {m} | {v} |")
 
           output.extend([
               "",
               "# Releases",
               "",
-              "| Date | Library | Module | Version |",
-              "| -------- | -------- | -------- | -------- |",
+              "| Date | Module | Version |",
+              "| -------- | -------- | -------- |",
           ])
 
-          for d, l, m, v in releases:
-              output.append(f"| {d} | {l} | {m} | {v} |")
+          for d, m, v in releases:
+              output.append(f"| {d} | {m} | {v} |")
 
           README.write_text("\n".join(output) + "\n", encoding="utf-8")
           PY
 
       - name: Commit and Push
         run: |
-          cd mavenRepo
-
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
+          
           git add .
 
           if git diff --cached --quiet; then
             echo "Nothing to commit"
             exit 0
           fi
-
-          git commit -m "Publish ${{ inputs.libraryName }}:${{ inputs.artifactId }} ${{ inputs.version }}"
+          
+          git commit -m "Publish ${{ inputs.artifactId }} ${{ inputs.version }}"
           git push
