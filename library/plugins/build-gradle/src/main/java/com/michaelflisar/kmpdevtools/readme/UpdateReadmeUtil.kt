@@ -218,10 +218,11 @@ object UpdateReadmeUtil {
             headerLine3
         ).joinToString("\n")
 
-        val liveDemo = buildString {
-            if (demoApp?.liveDemo == true) {
+        val interactiveWasmDemoButton = buildString {
+            if (demoApp?.interactiveWasmDemo == true) {
+                val image = ReadmeDefaults.imageInteractiveDemo
                 val link = "https://mflisar.github.io/${config.project.repoName}/demo/"
-                appendLine("A **live demo** of the app is available here: [Live Demo]($link)")
+                appendLine( "[![Open Interactive Demo]($image)]($link)")
             }
         }
 
@@ -439,7 +440,7 @@ object UpdateReadmeUtil {
         // 8) replace placeholders in readme with content from markdown files (all but table of contents)
         val replacements = listOf(
             Placeholder("{{ header }}", header),
-            Placeholder("{{ liveDemoContent }}", liveDemo),
+            Placeholder("{{ interactiveWasmDemoButton }}", interactiveWasmDemoButton),
             Partial(
                 "{{ partials.info }}",
                 File(rootDir, "documentation/_partials/info.md.partial")

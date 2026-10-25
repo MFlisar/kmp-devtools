@@ -112,7 +112,7 @@ data class Config(
         val namespace: String,
         @SerialName("version-name") val versionName: String,
         val path: String,
-        @SerialName("live-demo") val liveDemo: Boolean
+        @SerialName("interactive-wasm-demo") val interactiveWasmDemo: Boolean
     )
 
     @Serializable

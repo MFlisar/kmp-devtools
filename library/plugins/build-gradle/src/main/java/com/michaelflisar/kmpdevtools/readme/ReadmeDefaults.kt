@@ -11,7 +11,6 @@ object ReadmeDefaults {
     const val HAS_API_DOCS = true
 
     val headerTableOfContent = ReadmeRegion(null, "Table of Contents")
-    val headerLiveDemo = ReadmeRegion("globe_with_meridians", "Live Demo")
     val headerScreenshots = ReadmeRegion("camera", "Screenshots")
     val headerSupportedPlatform = ReadmeRegion("computer", "Supported Platforms")
     val headerVersions = ReadmeRegion("arrow_right", "Versions")
@@ -25,7 +24,6 @@ object ReadmeDefaults {
     val headerApiDocs = ReadmeRegion("books", "API")
 
     val allHeaders = listOf(
-        headerLiveDemo,
         headerTableOfContent,
         headerScreenshots,
         headerSupportedPlatform,
@@ -51,9 +49,7 @@ object ReadmeDefaults {
         
         {{ tableOfContent }}
         
-        ${headerLiveDemo.markdownHeader()}
-        
-        {{ liveDemoContent }}
+        {{ interactiveWasmDemoButton }}
 
         ${headerScreenshots.markdownHeader()}
 
@@ -170,6 +166,8 @@ object ReadmeDefaults {
         imageUrl = "https://img.shields.io/badge/javascript-${Platform.JS.color}?style=for-the-badge",
         altText = "JavaScript"
     )
+
+    val imageInteractiveDemo = "https://raw.githubusercontent.com/MFlisar/kmp-devtools/refs/heads/main/resources/open-interactive-demo.svg"
 
     fun imageMavenCentral(config: Config) = UpdateReadmeUtil.markdownImage(
         imageUrl = "https://img.shields.io/maven-central/v/${config.publish.groupId}/${config.modules.primaryArtifactId}?style=for-the-badge&color=blue",
