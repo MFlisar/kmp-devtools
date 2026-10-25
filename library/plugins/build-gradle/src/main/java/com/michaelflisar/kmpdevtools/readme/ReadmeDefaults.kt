@@ -25,6 +25,7 @@ object ReadmeDefaults {
     val headerApiDocs = ReadmeRegion("books", "API")
 
     val allHeaders = listOf(
+        headerLiveDemo,
         headerTableOfContent,
         headerScreenshots,
         headerSupportedPlatform,
