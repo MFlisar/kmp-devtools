@@ -56,7 +56,7 @@ object Launch4J {
 
         val outputFileName =
             outputConfig.fileName
-                ?: "${appModuleConfig.appConfig.name}.exe"
+                ?: "${appModuleConfig.app.name}.exe"
 
         val launch4jFolder =
             project.layout.buildDirectory.dir(config.outputDirName)
@@ -116,11 +116,11 @@ object Launch4J {
             mainClassName.set(desktopAppConfig.mainClass)
             icon.set(project.file(desktopAppConfig.ico).absolutePath)
             outfile.set(outputFileName)
-            productName.set(appModuleConfig.appConfig.name)
-            version.set(appModuleConfig.appConfig.versionName)
-            textVersion.set(appModuleConfig.appConfig.versionName)
+            productName.set(appModuleConfig.app.name)
+            version.set(appModuleConfig.app.versionName)
+            textVersion.set(appModuleConfig.app.versionName)
             companyName.set(appModuleConfig.config.developer.name)
-            description = "${appModuleConfig.appConfig.name} - Build at ${now.format(formatter)}"
+            description = "${appModuleConfig.app.name} - Build at ${now.format(formatter)}"
             copyright.set("©${now.year} ${appModuleConfig.config.developer.name}. All rights reserved.")
             jreMinVersion.set(appModuleConfig.config.javaVersion)
 

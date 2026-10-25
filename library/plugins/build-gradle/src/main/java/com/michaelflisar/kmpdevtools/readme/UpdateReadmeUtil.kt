@@ -1,7 +1,6 @@
 package com.michaelflisar.kmpdevtools.readme
 
-import com.michaelflisar.kmpdevtools.core.configs.Config
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.readme.classes.CustomMarkdownFile
 import com.michaelflisar.kmpdevtools.readme.classes.FolderLink
 import com.michaelflisar.kmpdevtools.readme.classes.Partial
@@ -16,7 +15,6 @@ object UpdateReadmeUtil {
     fun update(
         rootDir: File,
         config: Config,
-        libraryConfig: LibraryConfig,
         readmeTemplate: String = ReadmeDefaults.DefaultReadmeTemplate,
         folderModules: String = ReadmeDefaults.FOLDER_MODULES,
         folderScreenshots: String = ReadmeDefaults.FOLDER_SCREENSHOTS,
@@ -28,7 +26,9 @@ object UpdateReadmeUtil {
         println("################################")
         println("")
 
-        val modules = libraryConfig.modules.filter { it.artifactId.isNotEmpty() && !it.internal }
+        val demoApp = config.app
+
+        val modules = config.modules.modules.filter { it.artifactId.isNotEmpty() && !it.internal }
         val pluginModules = modules.filter { it.plugin }
         val nonPluginModules = modules.filter { !it.plugin }
 
@@ -102,9 +102,9 @@ object UpdateReadmeUtil {
         )
 
         val ignoreExperimentalAnnoation = { annotation: String ->
-            (annotation.startsWith("com.michaelflisar") && annotation.contains("InternalApi")) ||
+            (annotation.startsWith("com.michaelflisar") && annotation.contains("Internal")) ||
                     // kein namespace, dh. es ist intern im gleichen Ordner
-                    annotation == "InternalApi"
+                    annotation == "Internal"
         }
 
         var experimentalAnnotations = listOf<ExperimentalAnnotationInfo>()
@@ -186,14 +186,21 @@ object UpdateReadmeUtil {
             }
 
         // 3) create header replacement
-        val imageMavenCentral = ReadmeDefaults.imageMavenCentral(libraryConfig)
-        val imageAPI = ReadmeDefaults.imageAPI(minSdk)
-        val imageKotlin = ReadmeDefaults.imageKotlin(config, libraryConfig)
-        val imageKMP = ReadmeDefaults.imageKMP()
-        //val imageLicence = ReadmeDefaults.imageLicence(config, libraryConfig)
+        val imageMavenCentral = if (config.publish.target == Config.Publish.Target.MAVEN_CENTRAL) {
+            ReadmeDefaults.imageMavenCentral(config)
+        } else null
+            val imageGithubMaven = if (config.publish.target == Config.Publish.Target.GITHUB) {
+                ReadmeDefaults.imageGithubMaven(config.publish.requireGithub())
+            } else null
 
-        val headerLine1 = "$imageMavenCentral $imageAPI $imageKotlin $imageKMP"// $imageLicence"
-        val headerLine2 = "# ${libraryConfig.library.name}"
+        val imageAPI = ReadmeDefaults.imageAPI(minSdk)
+        val imageKotlin = ReadmeDefaults.imageKotlin(config)
+        val imageKMP = ReadmeDefaults.imageKMP()
+        //val imageLicence = ReadmeDefaults.imageLicence(config)
+
+        val headerLine1 = listOfNotNull(imageMavenCentral, imageGithubMaven, imageAPI, imageKotlin, imageKMP)
+            .joinToString(" ")
+        val headerLine2 = "# ${config.project.repoName}"
         val headerLine3 = listOfNotNull(
             ReadmeDefaults.ImageSupportedPlatforms,
             if (isAndroidSupported) ReadmeDefaults.ImageAndroid else null,
@@ -210,6 +217,13 @@ object UpdateReadmeUtil {
             headerLine2,
             headerLine3
         ).joinToString("\n")
+
+        val liveDemo = buildString {
+            if (demoApp?.liveDemo == true) {
+                val link = "https://mflisar.github.io/${config.project.repoName}/demo/"
+                appendLine("A **live demo** of the app is available here: [Live Demo]($link)")
+            }
+        }
 
         // 4) create supported platforms table
         val supportedPlatformsTable = buildString {
@@ -268,21 +282,44 @@ object UpdateReadmeUtil {
         }
 
         // 5) create setup instructions
-        val libraryName = libraryConfig.library.name.lowercase().replace(" ", "-")
+        val libraryName = config.project.repoName.lowercase().replace(" ", "-")
         val setupViaDependencies = buildString {
             if (nonPluginModules.isNotEmpty()) {
                 appendLine("val $libraryName = \"<LATEST-VERSION>\"")
                 appendLine()
             }
             for (module in nonPluginModules) {
-                appendLine("implementation(\"${libraryConfig.maven.groupId}:${module.artifactId}:\${$libraryName}\")")
+                appendLine("implementation(\"${config.publish.groupId}:${module.artifactId}:\${$libraryName}\")")
             }
             if (pluginModules.isNotEmpty()) {
                 appendLine("plugins {")
                 for (module in pluginModules) {
-                    appendLine("    id(\"${libraryConfig.maven.groupId}.${module.artifactId}\") version \"<LATEST-VERSION>\"")
+                    appendLine("    id(\"${config.publish.groupId}.${module.artifactId}\") version \"<LATEST-VERSION>\"")
                 }
                 appendLine("}")
+            }
+        }
+
+        val setupAddRepository = buildString {
+            if (config.publish.target == Config.Publish.Target.GITHUB) {
+                val github = config.publish.requireGithub()
+
+                appendLine("<b>This library is not published on maven central</b>")
+                appendLine()
+                appendLine("Instead it's published on GitHub, so you need to add the following repository to your settings.gradle.kts:")
+                appendLine()
+                appendLine("```java")
+                appendLine("dependencyResolutionManagement {")
+                appendLine("    repositories {")
+                appendLine("        mavenCentral()")
+                appendLine("        google()")
+                appendLine("        gradlePluginPortal()")
+                appendLine("        // ADD THIS")
+                appendLine("        maven(\"${github.fullGithubPageLinkWithPath}\")")
+                appendLine("        // ...")
+                appendLine("    }")
+                appendLine("}")
+                appendLine("```")
             }
         }
 
@@ -295,7 +332,7 @@ object UpdateReadmeUtil {
                 appendLine("[plugins]")
                 appendLine()
                 for (module in pluginModules) {
-                    appendLine("${libraryName}-${module.artifactId} = { id = \"${libraryConfig.maven.groupId}.${module.artifactId}\", version.ref = \"$libraryName\" }")
+                    appendLine("${libraryName}-${module.artifactId} = { id = \"${config.publish.groupId}.${module.artifactId}\", version.ref = \"$libraryName\" }")
                 }
             }
             if (nonPluginModules.isNotEmpty()) {
@@ -304,7 +341,7 @@ object UpdateReadmeUtil {
                 appendLine("[libraries]")
                 appendLine()
                 for (module in nonPluginModules) {
-                    appendLine("${libraryName}-${module.artifactId} = { module = \"${libraryConfig.maven.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
+                    appendLine("${libraryName}-${module.artifactId} = { module = \"${config.publish.groupId}:${module.artifactId}\", version.ref = \"$libraryName\" }")
                 }
             }
 
@@ -383,13 +420,14 @@ object UpdateReadmeUtil {
         } else
             buildMarkdownTable(null, screenshots, 3) { it.markdownImage }
 
-        val demo = if (File(rootDir, "demo").exists())
-            "A full [demo](/demo) is included inside the demo module, it shows nearly every usage with working examples."
+        val demo = if (demoApp != null) {
+            "A full [demo project](${demoApp.path}) is included inside the demo module, it shows nearly every usage with working examples."
+        }
         else ""
 
         val apiDocs = if (hasApiDocs) {
             val link =
-                "https://${config.developer.githubUserName}.github.io/${libraryConfig.library.name}/"
+                "https://${config.developer.githubUserName}.github.io/${config.project.repoName}/"
             "Check out the [API documentation]($link)."
         } else {
             ""
@@ -401,6 +439,7 @@ object UpdateReadmeUtil {
         // 8) replace placeholders in readme with content from markdown files (all but table of contents)
         val replacements = listOf(
             Placeholder("{{ header }}", header),
+            Placeholder("{{ liveDemoContent }}", liveDemo),
             Partial(
                 "{{ partials.info }}",
                 File(rootDir, "documentation/_partials/info.md.partial")
@@ -415,6 +454,7 @@ object UpdateReadmeUtil {
             Placeholder("{{ versions }}", versionsTable),
             Placeholder("{{ experimental }}", experimentalInfo),
             Placeholder("{{ setup-via-dependencies }}", setupViaDependencies),
+            Placeholder("{{ setup-add-repository }}", setupAddRepository),
             Placeholder("{{ setup-via-version-catalogue1 }}", setupViaVersionCatalogue1),
             Placeholder("{{ setup-via-version-catalogue2 }}", setupViaVersionCatalogue2),
             Placeholder("{{ screenshots }}", screenshotsTable),

@@ -12,8 +12,7 @@ import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
 import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
 import com.michaelflisar.kmpdevtools.core.Platform
-import com.michaelflisar.kmpdevtools.core.configs.AppConfig
-import com.michaelflisar.kmpdevtools.core.configs.Config
+import com.michaelflisar.kmpdevtools.core.Config
 import org.gradle.api.JavaVersion
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
@@ -199,30 +198,31 @@ fun BuildKonfigExtension.isExe(project: Project): Boolean {
 }
 
 fun BuildKonfigExtension.setupBuildKonfig(
-    appConfig: AppConfig,
+    config: Config,
     versionFormatter: ChangelogVersionFormatter? = DefaultVersionFormatter(DefaultVersionFormatter.Format.MajorMinorPatch),
     exposeObjectWithName: String = "BuildKonfig",
     isDebug: Boolean? = null,
     isExe: Boolean? = null,
-    config: TargetConfigDsl.() -> Unit = {},
+    configure: TargetConfigDsl.() -> Unit = {},
 ) {
-    packageName.set(appConfig.namespace)
+    val app = config.requireApp()
+    packageName.set(app.namespace)
     this.exposeObjectWithName.set(exposeObjectWithName)
     defaultConfigs {
-        buildConfigField(Type.STRING, "versionName", appConfig.versionName)
+        buildConfigField(Type.STRING, "versionName", app.versionName)
         if (versionFormatter != null)
             buildConfigField(
                 Type.INT,
                 "versionCode",
-                versionFormatter.parseVersion(appConfig.versionName).toString()
+                versionFormatter.parseVersion(app.versionName).toString()
             )
-        buildConfigField(Type.STRING, "namespace", appConfig.namespace)
-        buildConfigField(Type.STRING, "appName", appConfig.name)
+        buildConfigField(Type.STRING, "namespace", app.namespace)
+        buildConfigField(Type.STRING, "appName", app.name)
         if (isDebug != null)
             buildConfigField(Type.BOOLEAN, "DEBUG", isDebug.toString())
         if (isExe != null)
             buildConfigField(Type.BOOLEAN, "EXE", isExe.toString())
-        config()
+        configure()
     }
 }
 

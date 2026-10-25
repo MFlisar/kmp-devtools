@@ -1,13 +1,12 @@
 package com.michaelflisar.kmpdevtools.configs
 
-import com.michaelflisar.kmpdevtools.core.configs.AppConfig
-import com.michaelflisar.kmpdevtools.core.configs.Config
+import com.michaelflisar.kmpdevtools.core.Config
 import org.gradle.api.Project
 
 class AppModuleConfig internal constructor(
     val project: Project,
     val config: Config,
-    val appConfig: AppConfig,
+    val app: Config.App,
 ) {
     val projectNamespace: String
         get() = config.project.namespace
@@ -15,11 +14,10 @@ class AppModuleConfig internal constructor(
     companion object {
         fun readManual(project: Project): AppModuleConfig {
             val config = Config.read(project.rootDir)
-            val appConfig = AppConfig.read(project.rootDir)
             return AppModuleConfig(
                 project = project,
                 config = config,
-                appConfig = appConfig
+                app = config.requireApp(),
             )
         }
     }

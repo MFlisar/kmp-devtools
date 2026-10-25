@@ -17,10 +17,9 @@ class AndroidLibraryConfig private constructor(
             minSdk: Provider<String>,
             enableAndroidResources: Boolean = true,
         ): AndroidLibraryConfig {
-            val namespace = libraryModuleConfig.libraryConfig.getModuleNamespace(
-                libraryModuleConfig.project,
-                libraryModuleConfig.config
-            )
+            val namespace = libraryModuleConfig.config
+                .getModuleForProject(libraryModuleConfig.project.rootDir, libraryModuleConfig.project.projectDir)
+                .androidNamespace(libraryModuleConfig.config)
             return AndroidLibraryConfig(
                 compileSdk = compileSdk,
                 minSdk = minSdk,

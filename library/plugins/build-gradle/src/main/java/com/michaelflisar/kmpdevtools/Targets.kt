@@ -9,8 +9,7 @@ import com.michaelflisar.kmpdevtools.configs.WasmAppConfig
 import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
 import com.michaelflisar.kmpdevtools.core.Platform
-import com.michaelflisar.kmpdevtools.core.configs.AppConfig
-import com.michaelflisar.kmpdevtools.core.configs.Config
+import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
@@ -69,7 +68,6 @@ class Targets(
         //    setupAndroidLibraryTarget(
         //        libraryModuleData.project,
         //        libraryModuleData.config,
-        //        libraryModuleData.libraryConfig,
         //        libraryModuleData.androidConfig,
         //        configureAndroid
         //    )
@@ -183,7 +181,6 @@ class Targets(
                 //    val android = project.extensions.getByType(com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension::class.java)
                 //    with(android)
                 //    {
-                //        namespace = libraryConfig.library.namespace + "." + androidConfig.namespaceAddon
                 //        compileSdk = androidConfig.compileSdk.get().toInt()
                 //        minSdk = androidConfig.minSdk.get().toInt()
 //
@@ -215,7 +212,7 @@ class Targets(
         project: Project,
         config: Config,
         androidAppConfig: AndroidAppConfig,
-        appConfig: AppConfig,
+        appConfig: Config.App,
         compose: Boolean = true,
         configureDefault: (DefaultConfig.() -> Unit) = {},
         configureBuildFeature: (BuildFeatures.() -> Unit) = {},

@@ -1,8 +1,7 @@
 package com.michaelflisar.kmpdevtools.readme
 
 import com.michaelflisar.kmpdevtools.core.Platform
-import com.michaelflisar.kmpdevtools.core.configs.Config
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.readme.classes.ReadmeRegion
 
 object ReadmeDefaults {
@@ -12,6 +11,7 @@ object ReadmeDefaults {
     const val HAS_API_DOCS = true
 
     val headerTableOfContent = ReadmeRegion(null, "Table of Contents")
+    val headerLiveDemo = ReadmeRegion("globe_with_meridians", "Live Demo")
     val headerScreenshots = ReadmeRegion("camera", "Screenshots")
     val headerSupportedPlatform = ReadmeRegion("computer", "Supported Platforms")
     val headerVersions = ReadmeRegion("arrow_right", "Versions")
@@ -49,6 +49,10 @@ object ReadmeDefaults {
         ${headerTableOfContent.markdownHeader()}
         
         {{ tableOfContent }}
+        
+        ${headerLiveDemo.markdownHeader()}
+        
+        {{ liveDemoContent }}
 
         ${headerScreenshots.markdownHeader()}
 
@@ -65,6 +69,8 @@ object ReadmeDefaults {
         {{ experimental }}
 
         ${headerSetup.markdownHeader()}
+        
+        {{ setup-add-repository }}
         
         <details open>
 
@@ -164,10 +170,16 @@ object ReadmeDefaults {
         altText = "JavaScript"
     )
 
-    fun imageMavenCentral(libraryConfig: LibraryConfig) = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/maven-central/v/${libraryConfig.maven.groupId}/${libraryConfig.maven.primaryArtifactId}?style=for-the-badge&color=blue",
+    fun imageMavenCentral(config: Config) = UpdateReadmeUtil.markdownImage(
+        imageUrl = "https://img.shields.io/maven-central/v/${config.publish.groupId}/${config.modules.primaryArtifactId}?style=for-the-badge&color=blue",
         altText = "Maven Central",
-        linkUrl = "https://central.sonatype.com/artifact/${libraryConfig.maven.groupId}/${libraryConfig.maven.primaryArtifactId}"
+        linkUrl = "https://central.sonatype.com/artifact/${config.publish.groupId}/${config.modules.primaryArtifactId}"
+    )
+
+    fun imageGithubMaven(github: Config.Publish.Github)= UpdateReadmeUtil.markdownImage(
+        imageUrl = "https://img.shields.io/badge/${github.user}-${github.repo.replace("-", "--")}-brightgreen?style=for-the-badge&color=blue",
+        altText = "${github.user}/${github.repo}",
+        linkUrl = github.fullGithubPageLink
     )
 
     fun imageAPI(minSdk: Int) = UpdateReadmeUtil.markdownImage(
@@ -175,8 +187,8 @@ object ReadmeDefaults {
         altText = "API"
     )
 
-    fun imageKotlin(config: Config, libraryConfig: LibraryConfig) = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/github/languages/top/${config.developer.githubUserName}/${libraryConfig.library.name}.svg?style=for-the-badge&amp;color=blueviolet",
+    fun imageKotlin(config: Config) = UpdateReadmeUtil.markdownImage(
+        imageUrl = "https://img.shields.io/github/languages/top/${config.developer.githubUserName}/${config.project.repoName}.svg?style=for-the-badge&amp;color=blueviolet",
         altText = "Kotlin"
     )
 
@@ -185,9 +197,9 @@ object ReadmeDefaults {
         altText = "Kotlin Multiplatform"
     )
 
-    fun imageLicence(config: Config, libraryConfig: LibraryConfig) = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/github/license/${config.developer.githubUserName}/${libraryConfig.library.name}?style=for-the-badge",
+    fun imageLicence(config: Config) = UpdateReadmeUtil.markdownImage(
+        imageUrl = "https://img.shields.io/github/license/${config.developer.githubUserName}/${config.project.repoName}?style=for-the-badge",
         altText = "License",
-        linkUrl = "https://github.com/${config.developer.githubUserName}/${libraryConfig.library.name}/${libraryConfig.library.license.path}"
+        linkUrl = "https://github.com/${config.developer.githubUserName}/${config.project.repoName}/${config.project.license.path}"
     )
 }

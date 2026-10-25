@@ -1,7 +1,7 @@
 package com.michaelflisar.kmpdevtools.tooling
 
 import com.michaelflisar.kmpdevtools.core.classes.RelativePath
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.core.utils.SSHSetup
 import org.gradle.api.Project
 import java.io.File
@@ -19,19 +19,19 @@ object MacDefaults {
 
     fun getRelativePathRoot(
         project: Project,
-        libraryConfig: LibraryConfig = LibraryConfig.read(project.projectDir),
+        config: Config = Config.read(project.projectDir),
         macTargetRootDir: String = "/Users/mflisar/dev",
     ) = RelativePath.Root(
         local = project.rootDir.absolutePath,
-        remote = "$macTargetRootDir/${libraryConfig.library.name}"
+        remote = "$macTargetRootDir/${config.project.repoName}"
     )
 
     fun getRelativePathRoot(
         rootDirectory: File,
-        libraryConfig: LibraryConfig,
+        config: Config,
         macTargetRootDir: String = "/Users/mflisar/dev",
     ) = RelativePath.Root(
         local = rootDirectory.absolutePath,
-        remote = "$macTargetRootDir/${libraryConfig.library.name}"
+        remote = "$macTargetRootDir/${config.project.repoName}"
     )
 }

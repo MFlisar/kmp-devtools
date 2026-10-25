@@ -1,8 +1,6 @@
 package com.michaelflisar.kmpdevtools.configs
 
-import com.michaelflisar.kmpdevtools.core.configs.AppConfig
-import com.michaelflisar.kmpdevtools.core.configs.Config
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.core.Config
 import org.gradle.api.Project
 
 sealed class LibraryModuleConfig {
@@ -16,10 +14,9 @@ sealed class LibraryModuleConfig {
     class Library internal constructor(
         override val project: Project,
         override val config: Config,
-        val libraryConfig: LibraryConfig,
     ) : LibraryModuleConfig() {
         fun namespace(): String {
-            val module = libraryConfig.getModuleForProject(
+            val module = config.getModuleForProject(
                 project.rootDir,
                 project.projectDir
             )
@@ -30,21 +27,18 @@ sealed class LibraryModuleConfig {
     class Manual internal constructor(
         override val project: Project,
         override val config: Config,
-        val appConfig: AppConfig,
     ) : LibraryModuleConfig()
 
     companion object {
         fun read(project: Project): Library {
             val config = Config.read(project.rootDir)
-            val libraryConfig = LibraryConfig.read(project.rootDir)
-            val libraryModuleConfig = Library(project, config, libraryConfig)
+            val libraryModuleConfig = Library(project, config)
             return libraryModuleConfig
         }
 
         fun readManual(project: Project): Manual {
             val config = Config.read(project.rootDir)
-            val appConfig = AppConfig.read(project.rootDir)
-            val libraryModuleConfig = Manual(project, config, appConfig)
+            val libraryModuleConfig = Manual(project, config)
             return libraryModuleConfig
         }
     }

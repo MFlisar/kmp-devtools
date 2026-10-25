@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.launch4j)
     implementation(libs.buildkonfig.plugin)
     implementation(libs.buildkonfig.compiler)
+    implementation(libs.dokka)
 
     implementation(deps.yaml)
 

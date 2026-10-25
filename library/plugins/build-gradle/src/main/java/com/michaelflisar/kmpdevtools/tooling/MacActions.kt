@@ -1,7 +1,7 @@
 package com.michaelflisar.kmpdevtools.tooling
 
 import com.michaelflisar.kmpdevtools.core.classes.RelativePath
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.core.utils.CMDUtil
 import com.michaelflisar.kmpdevtools.core.utils.SSHSetup
 import com.michaelflisar.kmpdevtools.core.utils.SSHUtil
@@ -15,7 +15,7 @@ object MacActions {
         projectRootDirectory: File,
         sshSetup: SSHSetup,
         toolingSetup: ToolingSetup,
-        libraryConfig: LibraryConfig,
+        config: Config,
         defaultInput: String = "1,2",
     ) {
 
@@ -23,7 +23,7 @@ object MacActions {
         // Script Steps + Run
         // -------------------
 
-        val xcFrameworks = libraryConfig.xcframeworks.map {
+        val xcFrameworks = config.modules.xcframeworks.map {
             val name = it.name
             val path = it.path
             XCFrameworkSetup(
@@ -39,7 +39,7 @@ object MacActions {
             ScriptStep("Sync to Mac") {
                 syncToMac(
                     projectRootDirectory = projectRootDirectory,
-                    libraryConfig = libraryConfig,
+                    config = config,
                     sshSetup = sshSetup,
                     toolingSetup = toolingSetup
                 )
@@ -83,7 +83,7 @@ object MacActions {
 
 private fun syncToMac(
     projectRootDirectory: File,
-    libraryConfig: LibraryConfig,
+    config: Config,
     sshSetup: SSHSetup,
     toolingSetup: ToolingSetup,
 ) {
@@ -101,7 +101,7 @@ private fun syncToMac(
 
     val executables = toolingSetup.getExecutables()
 
-    val projectName = libraryConfig.library.name
+    val projectName = config.project.repoName
     val projectRootDirectory = projectRootDirectory.absolutePath
     val projectRemoteRootDirectory = toolingSetup.root.remote
 

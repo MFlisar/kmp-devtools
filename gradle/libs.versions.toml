@@ -39,6 +39,5 @@ launch4j =                          { module = "edu.sc.seis.launch4j:edu.sc.seis
 buildkonfig-plugin =                { module = "com.codingfeline.buildkonfig:com.codingfeline.buildkonfig.gradle.plugin", version.ref = "buildkonfig" }
 buildkonfig-compiler =              { module = "com.codingfeline.buildkonfig:buildkonfig-compiler",         version.ref = "buildkonfig" }
 kotlinx-serialization-json =	    { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", 	        version.ref = "kotlinx-serialization" }
-
-
+dokka =	                            { module = "org.jetbrains.dokka:dokka-gradle-plugin", 	                version.ref = "dokka" }
 

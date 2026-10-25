@@ -10,6 +10,8 @@ import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
 import com.michaelflisar.kmpdevtools.configs.DesktopAppConfig
 import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
+import com.michaelflisar.kmpdevtools.core.Config
+import com.michaelflisar.kmpdevtools.core.utils.ModuleUtil
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
@@ -22,6 +24,7 @@ import org.gradle.api.publish.PublishingExtension
 import org.jetbrains.compose.desktop.application.dsl.JvmApplication
 import org.jetbrains.compose.desktop.application.dsl.JvmApplicationDistributions
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.dokka.gradle.DokkaExtension
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -36,21 +39,7 @@ object BuildFileUtil {
     }
 
     /**
-     * Configures the project for publishing to Maven Central.
-     * This includes setting up the Maven coordinates, POM metadata, and signing.
-     *
-     * Usage:
-     *
-     * to only auto-publish releases without suffixes like "-debug", "-alpha", "-test" use following:
-     * <pre><code>
-     * autoReleaseOnMavenCentral = { version -> !version.contains("-") }
-     * </code></pre>
-     *
-     * @param libraryModuleConfig The configuration for the library module being published.
-     * @param platform The platform configuration for the publication.
-     * @param autoReleaseOnMavenCentral A function that determines if releases should be automatically published.
-     * @param sign Whether to sign the publications.
-     * @param version The version of the library, defaults to the value of the "TAG" environment variable (TAG is set by github action workflow) or "LOCAL-SNAPSHOT".
+     * Configures the publishing destination selected in the project's YAML configuration.
      */
     fun setupMavenPublish(
         libraryModuleConfig: LibraryModuleConfig.Library,
@@ -60,44 +49,52 @@ object BuildFileUtil {
         ),
         autoReleaseOnMavenCentral: (version: String) -> Boolean = { true },
         sign: Boolean = System.getenv("CI")?.toBoolean() == true,
-        version: String = System.getenv("TAG") ?: "LOCAL-SNAPSHOT",
+        version: String = System.getenv("TAG") ?: System.getenv("VERSION") ?: "LOCAL-SNAPSHOT",
     ) {
+        val config = libraryModuleConfig.config
+        val publish = config.publish
+        val target = publish.target
+        when (target) {
+            Config.Publish.Target.NONE -> return
+            Config.Publish.Target.MAVEN_CENTRAL -> {
+                publish.requireMavenCentral()
+            }
+            Config.Publish.Target.GITHUB -> {
+                publish.requireGithub()
+            }
+        }
+        val groupId = publish.groupId
+
         configurePublish(
             libraryModuleConfig = libraryModuleConfig,
             platform = platform,
-            version = version
+            version = version,
+            groupId = groupId,
         ) {
-            publishToMavenCentral(autoReleaseOnMavenCentral(version))
+            when (target) {
+                Config.Publish.Target.NONE -> Unit
+                Config.Publish.Target.MAVEN_CENTRAL ->
+                    publishToMavenCentral(autoReleaseOnMavenCentral(version))
+
+                Config.Publish.Target.GITHUB -> Unit
+            }
 
             if (sign) {
                 signAllPublications()
             }
         }
-    }
 
-    fun setupLocalMavenPublish(
-        libraryModuleConfig: LibraryModuleConfig.Library,
-        platform: Platform = KotlinMultiplatform(
-            javadocJar = JavadocJar.Dokka("dokkaGenerateHtml"),
-            sourcesJar = SourcesJar.Sources()
-        ),
-        version: String = System.getenv("VERSION") ?: "LOCAL-SNAPSHOT"
-    ) {
-        configurePublish(
-            libraryModuleConfig = libraryModuleConfig,
-            platform = platform,
-            version = version
-        )
-
-        libraryModuleConfig.project.extensions.configure(PublishingExtension::class.java) {
-            repositories {
-                maven {
-                    name = "GitHub"
-                    url = libraryModuleConfig.project.layout.buildDirectory
-                        .dir("maven-repo")
-                        .get()
-                        .asFile
-                        .toURI()
+        if (target == Config.Publish.Target.GITHUB) {
+            libraryModuleConfig.project.extensions.configure(PublishingExtension::class.java) {
+                repositories {
+                    maven {
+                        name = "GitHub"
+                        url = libraryModuleConfig.project.layout.buildDirectory
+                            .dir("maven-repo")
+                            .get()
+                            .asFile
+                            .toURI()
+                    }
                 }
             }
         }
@@ -108,9 +105,10 @@ object BuildFileUtil {
         libraryModuleConfig: LibraryModuleConfig.Library,
         platform: Platform,
         version: String,
+        groupId: String,
         block: MavenPublishBaseExtension.() -> Unit = {},
     ) {
-        val module = libraryModuleConfig.libraryConfig.getModuleForProject(
+        val module = libraryModuleConfig.config.getModuleForProject(
             libraryModuleConfig.project.rootDir,
             libraryModuleConfig.project.projectDir
         )
@@ -119,28 +117,28 @@ object BuildFileUtil {
             configure(platform)
 
             coordinates(
-                groupId = libraryModuleConfig.libraryConfig.maven.groupId,
+                groupId = groupId,
                 artifactId = module.artifactId,
                 version = version
             )
 
             pom {
-                name.set(libraryModuleConfig.libraryConfig.library.name)
-                description.set(module.libraryDescription(libraryModuleConfig.libraryConfig))
-                inceptionYear.set(libraryModuleConfig.libraryConfig.library.release.toString())
+                name.set(libraryModuleConfig.config.project.repoName)
+                description.set(module.libraryDescription(libraryModuleConfig.config))
+                inceptionYear.set(libraryModuleConfig.config.project.release.toString())
                 url.set(
-                    libraryModuleConfig.libraryConfig.library.getRepoLink(
+                    libraryModuleConfig.config.project.getRepoLink(
                         libraryModuleConfig.config.developer
                     )
                 )
 
                 licenses {
                     license {
-                        name.set(libraryModuleConfig.libraryConfig.library.license.name)
+                        name.set(libraryModuleConfig.config.project.license.name)
                         url.set(
-                            libraryModuleConfig.libraryConfig.library.license.getLink(
+                            libraryModuleConfig.config.project.license.getLink(
                                 libraryModuleConfig.config.developer,
-                                libraryModuleConfig.libraryConfig.library
+                                libraryModuleConfig.config.project
                             )
                         )
                     }
@@ -156,7 +154,7 @@ object BuildFileUtil {
 
                 scm {
                     url.set(
-                        libraryModuleConfig.libraryConfig.library.getRepoLink(
+                        libraryModuleConfig.config.project.getRepoLink(
                             libraryModuleConfig.config.developer
                         )
                     )
@@ -205,7 +203,7 @@ object BuildFileUtil {
     ) {
         appModuleConfig.project.extensions.configure(ApplicationExtension::class.java) {
 
-            namespace = appModuleConfig.appConfig.namespace
+            namespace = appModuleConfig.app.namespace
 
             this.compileSdk = androidAppConfig.compileSdk.get().toInt()
 
@@ -218,14 +216,14 @@ object BuildFileUtil {
 
                 this.minSdk = androidAppConfig.minSdk.get().toInt()
                 this.targetSdk = androidAppConfig.targetSdk.get().toInt()
-                this.versionCode = versionFormatter.parseVersion(appModuleConfig.appConfig.versionName)
-                this.versionName = appModuleConfig.appConfig.versionName
+                this.versionCode = versionFormatter.parseVersion(appModuleConfig.app.versionName)
+                this.versionName = appModuleConfig.app.versionName
 
                 if (generateResAppName) {
                     resValue(
                         type = "string",
                         name = androidAppConfig.stringResourceIdForAppName,
-                        value = appModuleConfig.appConfig.name
+                        value = appModuleConfig.app.name
                     )
                 }
             }
@@ -290,10 +288,10 @@ object BuildFileUtil {
                 val now = LocalDateTime.now()
                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-                packageName = appModuleConfig.appConfig.name // entspricht dem exe Name
-                packageVersion = appModuleConfig.appConfig.versionName
+                packageName = appModuleConfig.app.name // entspricht dem exe Name
+                packageVersion = appModuleConfig.app.versionName
                 description =
-                    "${appModuleConfig.appConfig.name} - Build at ${now.format(formatter)}"
+                    "${appModuleConfig.app.name} - Build at ${now.format(formatter)}"
                 copyright =
                     "©${now.year} ${appModuleConfig.config.developer.name}. All rights reserved."
                 vendor = appModuleConfig.config.developer.name
@@ -365,8 +363,8 @@ object BuildFileUtil {
         outputFolder: String = "${if (appModuleConfig.project.providers.gradleProperty("work").isPresent) "D:/dev" else "M:/dev"}/06 - retrace",
     ) {
         val project = appModuleConfig.project
-        val appName = appModuleConfig.appConfig.name
-        val appVersionName = appModuleConfig.appConfig.versionName
+        val appName = appModuleConfig.app.name
+        val appVersionName = appModuleConfig.app.versionName
         afterEvaluate {
             project.tasks.named("bundleRelease").configure {
                 finalizedBy("extractProguardMap")
@@ -426,5 +424,28 @@ object BuildFileUtil {
                 throw kotlin.Exception("ERROR - ProGuard-Map-Datei wurde NICHT in ${proguardMapOutput.absolutePath} umbenannt!")
             }
         }
+    }
+
+    fun setupDokka(project: Project) {
+
+        val config = Config.read(project.rootDir)
+
+        project.pluginManager.apply("org.jetbrains.dokka")
+        project.extensions.configure(DokkaExtension::class.java) {
+            moduleName.set(config.project.repoName)
+        }
+
+        val libraryId = config.project.repoName.lowercase()
+        config.modules.modules
+            .filter { it.artifactId.isNotEmpty() }
+            .forEach {
+                val moduleName = ModuleUtil.folderToModuleName(it.path, libraryId)
+                val moduleProject = project.project(moduleName)
+                moduleProject.pluginManager.apply("org.jetbrains.dokka")
+                project.dependencies.add(
+                    "dokka",
+                    project.dependencies.project(mapOf("path" to moduleProject.path))
+                )
+            }
     }
 }

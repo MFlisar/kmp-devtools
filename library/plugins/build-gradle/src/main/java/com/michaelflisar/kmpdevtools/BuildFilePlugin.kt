@@ -1,8 +1,6 @@
 package com.michaelflisar.kmpdevtools
 
-import com.michaelflisar.kmpdevtools.core.ConfigDefaults
-import com.michaelflisar.kmpdevtools.core.configs.Config
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.readme.ReadmeDefaults
 import com.michaelflisar.kmpdevtools.readme.UpdateReadmeUtil
 import com.michaelflisar.kmpdevtools.tooling.MacActions
@@ -58,7 +56,7 @@ abstract class BaseTask : DefaultTask() {
 
     init {
         rootDirectory.convention(project.rootProject.layout.projectDirectory)
-        configFiles.from(project.rootProject.layout.projectDirectory.dir(ConfigDefaults.DEFAULT_FOLDER))
+        configFiles.from(project.rootProject.layout.projectDirectory.file(Config.FILE_NAME))
     }
 
     fun readRoot() = rootDirectory.get().asFile
@@ -68,10 +66,6 @@ abstract class BaseTask : DefaultTask() {
         return Config.read(root)
     }
 
-    fun tryReadLibraryConfig(): LibraryConfig? {
-        val root = readRoot()
-        return LibraryConfig.tryRead(root)
-    }
 }
 
 abstract class UpdateMarkdownFilesTask : BaseTask() {
@@ -98,12 +92,9 @@ abstract class UpdateMarkdownFilesTask : BaseTask() {
     @TaskAction
     fun run() {
         val config = readConfig()
-        val libraryConfig = tryReadLibraryConfig()
-            ?: throw RuntimeException("LibraryConfig not found in project")
         UpdateReadmeUtil.update(
             rootDir = rootDirectory.get().asFile,
             config = config,
-            libraryConfig = libraryConfig,
             readmeTemplate = template.get(),
             folderModules = folderModules.get(),
             folderScreenshots = folderScreenshots.get(),
@@ -116,17 +107,16 @@ abstract class MacActionsTask : BaseTask() {
 
     @TaskAction
     fun run() {
-        val libraryConfig =
-            tryReadLibraryConfig() ?: throw RuntimeException("LibraryConfig not found in project")
+        val config = readConfig()
         val sshSetup = MacDefaults.getMacSSHSetup()
         val relativePathRoot =
-            MacDefaults.getRelativePathRoot(rootDirectory.get().asFile, libraryConfig)
+            MacDefaults.getRelativePathRoot(rootDirectory.get().asFile, config)
         val toolingSetup = ToolingSetup(relativePathRoot)
         MacActions.run(
             projectRootDirectory = rootDirectory.get().asFile,
             sshSetup = sshSetup,
             toolingSetup = toolingSetup,
-            libraryConfig = libraryConfig,
+            config = config,
         )
     }
 }
@@ -145,9 +135,6 @@ abstract class DevToolsTask : BaseTask() {
     fun run() {
 
         val root = readRoot()
-
-        val config = readConfig()
-        val libraryConfig = tryReadLibraryConfig()
 
         println()
         println("-------------------")

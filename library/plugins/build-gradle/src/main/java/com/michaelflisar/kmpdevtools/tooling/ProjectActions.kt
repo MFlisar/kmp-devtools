@@ -1,7 +1,6 @@
 package com.michaelflisar.kmpdevtools.tooling
 
-import com.michaelflisar.kmpdevtools.core.configs.Config
-import com.michaelflisar.kmpdevtools.core.configs.LibraryConfig
+import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.core.utils.GithubUtil
 import com.michaelflisar.kmpdevtools.core.utils.ProjectData
 import com.michaelflisar.kmpdevtools.core.utils.ProjectRenamer
@@ -16,10 +15,8 @@ object ProjectActions {
 
         val rootDir = File(System.getProperty("user.dir"))
         val config = Config.read(rootDir)
-        val libraryConfig = LibraryConfig.read(rootDir)
-
         val currentPackageName = config.project.namespace
-        val currentLibraryName = libraryConfig.library.name
+        val currentLibraryName = config.project.repoName
 
         val packageNameTo = readUserInput("New package name / namespace (current: $currentPackageName): ")
         val libraryNameTo = readUserInput("New library name (current: $currentLibraryName): ")
