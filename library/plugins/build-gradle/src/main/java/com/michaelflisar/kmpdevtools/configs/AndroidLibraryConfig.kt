@@ -21,12 +21,14 @@ class AndroidLibraryConfig private constructor(
             val libraryInvariantPath = libraryModuleConfig.project.relativeInvariantProjectPath()
             val app = libraryModuleConfig.config
                 .apps
-                .find { it.invariantTargetPaths.contains(libraryInvariantPath) }
+                .find { it.invariantModulePaths.contains(libraryInvariantPath) }
 
             // 1) prüfen ob project in config apps target paths liegt
             val namespace = if (app != null) {
                 val ns = app.namespace
-                val addons = app.invariantMainPath.replace(libraryInvariantPath, "").split("/")
+                val addons = app.commonInvariantModulePath()
+                    .replace(libraryInvariantPath, "")
+                    .split("/")
                     .filter { it.isNotBlank() }
                 ns + (if (addons.isNotEmpty()) "." else "") + addons.joinToString(".")
             }

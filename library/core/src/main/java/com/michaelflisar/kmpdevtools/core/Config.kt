@@ -4,6 +4,7 @@ import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.File
+import kotlin.text.ifEmpty
 
 @Serializable
 data class Config(
@@ -39,7 +40,7 @@ data class Config(
 
     fun requireApp(relativePath: String): App {
         val app = apps.find {
-            val validPaths = it.invariantTargetPaths
+            val validPaths = it.invariantModulePaths
             validPaths.contains(relativePath)
         }
         return app ?: error("[Config::requireApp] Missing required 'app' section in $FILE_NAME - path: $relativePath")
@@ -120,25 +121,36 @@ data class Config(
     data class App(
         val name: String,
         val namespace: String,
-        @SerialName("main-path") private val mainPath: String,
         @SerialName("version-name") val versionName: String,
-        @SerialName("target-paths") private val targetPaths: List<String>,
+        @SerialName("module-paths") private val modulePaths: List<String>,
         val publish: Publish? = null,
     ) {
-        val invariantMainPath: String
-            get() = mainPath.invariantPath()
+        val invariantModulePaths: List<String>
+            get() = modulePaths.map { it.invariantPath() }
 
-        val invariantTargetPaths : List<String>
-            get() = targetPaths.map { it.invariantPath() }
+        fun commonInvariantModulePath(): String {
+            val modulePaths = invariantModulePaths.map { path ->
+                path.trim('/').split('/').filter { it.isNotEmpty() }
+            }
+            require(modulePaths.isNotEmpty() && modulePaths.all { it.isNotEmpty() }) {
+                "App '$name' must define at least one non-empty module path"
+            }
+            val commonSegments = modulePaths.drop(1).fold(modulePaths.first()) { common, path ->
+                common.zip(path)
+                    .takeWhile { (commonSegment, pathSegment) -> commonSegment == pathSegment }
+                    .map { it.first }
+            }
+            return commonSegments.joinToString("/")
+        }
 
         @Serializable
         data class Publish(
-            val path: String,
+            @SerialName("url-path") val urlPath: String,
             val description: String,
-            @SerialName("target-path") private val targetPath: String,
+            @SerialName("module-path") private val modulePath: String,
         ) {
-            val invariantTargetPath: String
-                get() = targetPath.invariantPath()
+            val invariantModulePath: String
+                get() = modulePath.invariantPath()
         }
     }
 
@@ -208,14 +220,20 @@ data class Config(
     @Serializable
     data class Documentation(
         @SerialName("root-path") private val rootPath: String,
-        @SerialName("folder-partials") val folderPartials: String,
-        @SerialName("folder-screenshots") val folderScreenshots: String,
-        @SerialName("main-screenshot-path") private val mainScreenshotPath: String? = null
+        @SerialName("partials-path") private val partialsPath: String,
+        @SerialName("screenshots-path") private val screenshotsPath: String,
+        @SerialName("main-screenshot-path") private val mainScreenshotPath: String? = null,
     ) {
         val invariantRoot: String
             get() = rootPath.invariantPath()
 
-        val invariantMainScreenShotPath: String?
+        val invariantPartialsPath: String
+            get() = partialsPath.invariantPath()
+
+        val invariantScreenshotsPath: String
+            get() = screenshotsPath.invariantPath()
+
+        val invariantMainScreenshotPath: String?
             get() = mainScreenshotPath?.invariantPath()
     }
 

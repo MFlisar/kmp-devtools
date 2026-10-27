@@ -210,7 +210,7 @@ object UpdateReadmeUtil {
                 postfix = "\n"
             ) {
                 val (app, publish) = it
-                val link = "https://mflisar.github.io/${config.project.repoName}/${publish.path}/"
+                val link = "https://mflisar.github.io/${config.project.repoName}/${publish.urlPath}/"
                 "\n> ${ReadmeDefaults.imageInteractiveDemo(label = app.name, url = link)}"
             }
             .orEmpty()
@@ -360,8 +360,8 @@ object UpdateReadmeUtil {
         val screenshot = buildString {
 
             // 1) add main screenshot inline in readme
-            if ((config.documentation.invariantMainScreenShotPath?.length ?: 0) > 0) {
-                val link = "${config.documentation.invariantRoot}/${config.documentation.folderScreenshots}/${config.documentation.invariantMainScreenShotPath}"
+            if ((config.documentation.invariantMainScreenshotPath?.length ?: 0) > 0) {
+                val link = config.documentation.invariantMainScreenshotPath
                 appendLine("![Screenshot]($link)")
             }
         }
@@ -422,12 +422,12 @@ object UpdateReadmeUtil {
         val demos = buildString {
             if (config.apps.size == 1) {
                 val demo = config.apps[0]
-                appendLine("A full [demo project](${demo.invariantMainPath}) is included.")
+                appendLine("A full [demo project](${demo.invariantModulePaths}) is included.")
             } else if (config.apps.size > 1) {
                 appendLine("Following full demo projects are included:")
                 appendLine()
-                config.apps.forEach {
-                    appendLine("- [${it.name}](${it.invariantMainPath})")
+                config.apps.forEach { app ->
+                    appendLine("- [${app.name}](${app.commonInvariantModulePath()})")
                 }
             }
         }
@@ -814,7 +814,11 @@ private fun findAllMarkdownFilesWithNames(
     val markdownFilesWithName = folderDocumentation
         .walkTopDown()
         .filter { it.isFile && it.extension == "md" }
-        .filter { !it.path.contains("/${config.documentation.folderPartials}/") }
+        .filter {
+            val filePath = "/${it.invariantSeparatorsPath}/"
+            val partialsPath = "/${config.documentation.invariantPartialsPath.trim('/')}/"
+            !filePath.contains(partialsPath)
+        }
         .toList()
         .sortedBy { it.path }
         .map {

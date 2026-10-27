@@ -22,7 +22,7 @@ class AppModuleConfig internal constructor(
             val config = Config.read(project.rootDir)
 
             val appInvariantPath = project.relativeInvariantProjectPath()
-            val app = config.apps.find { it.invariantTargetPaths.contains(appInvariantPath) } ?:
+            val app = config.apps.find { it.invariantModulePaths.contains(appInvariantPath) } ?:
                 error("[AppModuleConfig::read] Missing required 'app' section in ${Config.FILE_NAME} - path: $appInvariantPath")
 
             return AppModuleConfig(
