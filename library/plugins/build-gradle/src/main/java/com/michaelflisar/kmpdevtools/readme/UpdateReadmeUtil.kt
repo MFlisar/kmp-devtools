@@ -61,6 +61,8 @@ object UpdateReadmeUtil {
         val markdownFilesWithName = findAllMarkdownFilesWithNames(folderDocumentation, config)
 
         // 2) get all documentation folders as hierarchical markdown "link tree"
+        // => AI agant macht das nun im usage Teil selbst
+        /*
         val additionalDocsTable = buildMarkdownLinks(
             buildFolderLinkHierarchy(
                 markdownFilesWithName,
@@ -78,6 +80,8 @@ object UpdateReadmeUtil {
                 }
             }
         }
+         */
+        val additionalDocs = ""
 
         val ignoreExperimentalAnnoation = { annotation: String ->
             (annotation.startsWith("com.michaelflisar") && annotation.contains("Internal")) ||
@@ -351,7 +355,7 @@ object UpdateReadmeUtil {
         }
 
         // 6) create screenshot replacement
-        val screenshots = buildString {
+        val mainScreenshot = buildString {
 
             // 1) add main screenshot inline in readme
             if ((config.documentation.invariantMainScreenShotPath?.length ?: 0) > 0) {
@@ -457,7 +461,7 @@ object UpdateReadmeUtil {
             Placeholder("{{ setup-add-repository }}", setupAddRepository),
             Placeholder("{{ setup-via-version-catalogue1 }}", setupViaVersionCatalogue1),
             Placeholder("{{ setup-via-version-catalogue2 }}", setupViaVersionCatalogue2),
-            Placeholder("{{ screenshots }}", screenshots),
+            Placeholder("{{ main-screenshot }}", mainScreenshot),
             Placeholder("{{ other-libraries }}", ReadmeDefaults.GithubMyLibrariesLink),
             Placeholder(
                 "{{ compatibility-link }}",
@@ -716,7 +720,7 @@ object UpdateReadmeUtil {
                         link = fileObj?.let {
                             val rel = it.file.relativeTo(rootDir).invariantSeparatorsPath
                             val encodedRelativePath = encodeRelativeLink(rel)
-                            "[${it.name}]($encodedRelativePath)"
+                            "[${it.extractedTitle}]($encodedRelativePath)"
                         },
                         children = emptyList()
                     )

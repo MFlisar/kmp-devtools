@@ -1,67 +1,36 @@
 # kmp-devtools
 
-Offers useful `gradle` functions to set up KMP modules as well as a script to generate an automated documentation for my KMP librieries.
+Gradle-Tools für KMP-Projekte. Die Build- und Settings-Plugins lesen ihre gemeinsame Konfiguration aus `.config.yml` im Projektverzeichnis.
 
-# Gradle Tasks
+## Gradle-Tasks
 
-* `updateMarkdownFiles`
-* `macActions`
-* `renameProject`
-* `updateDevToolsVersion`
+| Task | Funktion |
+|---|---|
+| `updateMarkdownFiles` | Aktualisiert README und Markdown-Dokumentation anhand der Konfiguration. |
+| `macActions` | Bietet Aktionen für einen Mac an: Projekt synchronisieren, XCFrameworks bauen oder Xcode öffnen. |
+| `devTools` | Öffnet ein Menü mit zusätzlichen Werkzeugen. |
+| `launch4j` | Erstellt einen Windows-Launcher; wird über `BuildFileUtil.registerLaunch4JTask()` registriert. |
+| `extractProguardMap` | Extrahiert die ProGuard-Mapping-Datei aus dem Release-AAB; wird über `BuildFileUtil.registerExtractProguardMapFromAABTask()` registriert und nach `bundleRelease` ausgeführt. |
 
-* `BuildFileUtil.registerLaunch4JTask()` creates as task called "launch4j"
-* `BuildFileUtil.registerExtractProguardMapFromAABTask()` creates as task called "extractProguardMap" (automatically called after `bundleRelease`)
+Im Menü von `devTools` stehen zur Verfügung:
 
-# Snippets
+| Werkzeug | Funktion |
+|---|---|
+| `updateDevTools` (`u`) | Aktualisiert die kmp-devtools-Version in Versionskatalog, `settings.gradle.kts` und GitHub-Workflows. |
+| `downloadFiles` (`d`) | Lädt die vorgesehenen GitHub-Workflow-Dateien ins Projekt. |
 
-#### Snippets in Code
+## Aufbau von `.config.yml`
 
-```java
-// begin-snippet: MySnippetName
-val text = "Hello, World!"
-// end-snippet
-```
+Die Datei enthält die projektweiten Angaben für Publishing, Module und die Dokumentationsgenerierung. Pfade beziehen sich auf das Projektverzeichnis.
 
-#### Snippets in Markdown
+| Abschnitt | Inhalt |
+|---|---|
+| `publish` | `group-id`, Publishing-Ziel (`none`, `maven-central` oder `github`) und bei GitHub die Angaben `user`, `repo`, `branch` und `path`. |
+| `config` | `java-version` sowie `developer` mit Name, E-Mail, Maven-ID und GitHub-Benutzername. |
+| `project` | Projekt-Namespace, Repository-Name, Veröffentlichungsjahr (`release`) und Lizenz mit Name und Repository-Pfad. |
+| `apps` | Liste der Apps mit Name, Namespace, Version, Pfad und Angaben zur Demo-Veröffentlichung. |
+| `modules` | `primary-artifact-id`, eine Modulliste mit Artifact-ID, Beschreibung und Pfad sowie eine XCFramework-Liste mit Name, Pfad und Targets. |
+| `documentation` | Dokumentationsordner, Ordner für Partials und Screenshots sowie optional der Pfad zum Haupt-Screenshot. |
+| `settings` | Optionale Einstellungen; `log-dependencies` ist standardmäßig `false`. |
 
-```
-snippet: MySnippetName
-```
-
-# Markdown
-
-* [Icons/Emojis](https://gist.github.com/rxaviers/7360908)
-* [Alerts/Admonitions](https://github.com/github/docs/blob/74e6642840872e8f5b1eea06bed81d779d886109/content/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax.md#alerts)
-
-```
-> [!NOTE]
-> Useful information that users should know, even when skimming content.
-
-> [!TIP]
-> Helpful advice for doing things better or more easily.
-
-> [!IMPORTANT]
-> Key information users need to know to achieve their goal.
-
-> [!WARNING]
-> Urgent info that needs immediate user attention to avoid problems.
-
-> [!CAUTION]
-> Advises about risks or negative outcomes of certain actions.
-```
-
-> [!NOTE]
-> Useful information that users should know, even when skimming content.
-
-> [!TIP]
-> Helpful advice for doing things better or more easily.
-
-> [!IMPORTANT]
-> Key information users need to know to achieve their goal.
-
-> [!WARNING]
-> Urgent info that needs immediate user attention to avoid problems.
-
-> [!CAUTION]
-> Advises about risks or negative outcomes of certain actions.
-
+Die obersten Abschnitte `publish`, `config`, `apps`, `project`, `modules` und `documentation` sind erforderlich. `publish.github` wird benötigt, wenn `publish.target: github` gesetzt ist. Bei Modulen sind `plugin` und `internal` optionale Flags; bei `documentation` ist `main-screenshot-path` optional.

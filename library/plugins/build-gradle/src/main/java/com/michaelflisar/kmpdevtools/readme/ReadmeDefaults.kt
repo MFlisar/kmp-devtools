@@ -9,7 +9,6 @@ object ReadmeDefaults {
     const val HAS_API_DOCS = true
 
     val headerTableOfContent = ReadmeRegion(null, "Table of Contents")
-    val headerScreenshots = ReadmeRegion("camera", "Screenshots")
     val headerSupportedPlatform = ReadmeRegion("computer", "Supported Platforms")
     val headerVersions = ReadmeRegion("arrow_right", "Versions")
     val headerSetup = ReadmeRegion("wrench", "Setup")
@@ -21,7 +20,6 @@ object ReadmeDefaults {
 
     val allHeaders = listOf(
         headerTableOfContent,
-        headerScreenshots,
         headerSupportedPlatform,
         headerVersions,
         headerSetup,
@@ -41,13 +39,11 @@ object ReadmeDefaults {
         
         {{ interactiveWasmDemoButton }}
         
+        {{ main-screenshot }}
+        
         ${headerTableOfContent.markdownHeader()}
         
         {{ tableOfContent }}
-
-        ${headerScreenshots.markdownHeader()}
-
-        {{ screenshots }}
 
         ${headerSupportedPlatform.markdownHeader()}
 
@@ -179,7 +175,7 @@ object ReadmeDefaults {
     )
 
     fun imageAPI(minSdk: Int) = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/api-${minSdk}%2B-brightgreen.svg?style=for-the-badge",
+        imageUrl = "https://img.shields.io/badge/api-${minSdk}%2B-brightgreen.svg",
         altText = "API"
     )
 

@@ -195,8 +195,7 @@ data class Config(
         @SerialName("root-path") private val rootPath: String,
         @SerialName("folder-partials") val folderPartials: String,
         @SerialName("folder-screenshots") val folderScreenshots: String,
-        @SerialName("main-screenshot-path") private val mainScreenshotPath: String? = null,
-        @SerialName("sorted-folder") val sortedFolders: List<String>,
+        @SerialName("main-screenshot-path") private val mainScreenshotPath: String? = null
     ) {
         val invariantRoot: String
             get() = rootPath.invariantPath()
