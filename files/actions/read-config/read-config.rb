@@ -63,48 +63,42 @@ abort "apps must be a list." unless apps.is_a?(Array)
 abort "Each entry in apps must be a mapping." unless apps.all? { |app| app.is_a?(Hash) }
 demos = apps.select { |app| !app["publish"].nil? }
 demo_apps = demos.map do |app|
-  main_path = config_value(app["main-path"])
-  unless main_path.match?(/\A[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\z/) &&
-      main_path.split("/").none? { |part| part == "." || part == ".." }
-    abort "apps.main-path must be a relative path without empty, '.' or '..' segments for a published demo."
-  end
-
-  target_paths = app["target-paths"]
-  unless target_paths.is_a?(Array) && target_paths.all? { |path| path.is_a?(String) }
-    abort "apps.target-paths must be a list of strings."
+  module_paths = app["module-paths"]
+  unless module_paths.is_a?(Array) && module_paths.all? { |path| path.is_a?(String) }
+    abort "apps.module-paths must be a list of strings."
   end
 
   publish = app["publish"]
   abort "apps.publish must be a mapping." unless publish.is_a?(Hash)
-  app_target_path = config_value(publish["target-path"])
-  abort "apps.publish.target-path must be included in apps.target-paths." unless target_paths.include?(app_target_path)
-  unless app_target_path.match?(/\A[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\z/) &&
-      app_target_path.split("/").none? { |part| part == "." || part == ".." }
-    abort "apps.publish.target-path must be a relative path without empty, '.' or '..' segments."
+  module_path = config_value(publish["module-path"])
+  abort "apps.publish.module-path must be included in apps.module-paths." unless module_paths.include?(module_path)
+  unless module_path.match?(/\A[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\z/) &&
+      module_path.split("/").none? { |part| part == "." || part == ".." }
+    abort "apps.publish.module-path must be a relative path without empty, '.' or '..' segments."
   end
 
-  publish_path = config_value(publish["path"])
-  unless publish_path.match?(/\A[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\z/) &&
-      publish_path.split("/").none? { |part| part == "." || part == ".." }
-    abort "apps.publish.path must be a relative path without empty, '.' or '..' segments."
+  url_path = config_value(publish["url-path"])
+  unless url_path.match?(/\A[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\z/) &&
+      url_path.split("/").none? { |part| part == "." || part == ".." }
+    abort "apps.publish.url-path must be a relative path without empty, '.' or '..' segments."
   end
 
   {
     "name" => config_value(app["name"]),
     "description" => config_value(publish["description"]),
-    "publish-path" => publish_path,
-    "task" => ":#{app_target_path.split("/").join(":")}:wasmJsBrowserDistribution",
-    "html-path" => "#{app_target_path}/build/dist/wasmJs/productionExecutable"
+    "url-path" => url_path,
+    "task" => ":#{module_path.split("/").join(":")}:wasmJsBrowserDistribution",
+    "html-path" => "#{module_path}/build/dist/wasmJs/productionExecutable"
   }
 end
 abort "apps.name must be set for each published demo." if demo_apps.any? { |app| app["name"].empty? }
-publish_paths = demo_apps.map { |app| app["publish-path"] }
-abort "apps.publish.path values must be unique." unless publish_paths.uniq.length == publish_paths.length
-abort "apps.publish.path must not overlap the reserved api path." if publish_paths.any? { |path| path == "api" || path.start_with?("api/") }
-overlapping_publish_paths = publish_paths.combination(2).any? do |path, other|
+url_paths = demo_apps.map { |app| app["url-path"] }
+abort "apps.publish.url-path values must be unique." unless url_paths.uniq.length == url_paths.length
+abort "apps.publish.url-path must not overlap the reserved api path." if url_paths.any? { |path| path == "api" || path.start_with?("api/") }
+overlapping_url_paths = url_paths.combination(2).any? do |path, other|
   path.start_with?("#{other}/") || other.start_with?("#{path}/")
 end
-abort "apps.publish.path values must not overlap." if overlapping_publish_paths
+abort "apps.publish.url-path values must not overlap." if overlapping_url_paths
 
 outputs = {
   "publish-enabled" => publish_enabled,

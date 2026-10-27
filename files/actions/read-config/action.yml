@@ -37,7 +37,7 @@ outputs:
     description: Whether a demo is configured for publishing
     value: ${{ steps.parse.outputs.demo-enabled }}
   demo-apps-json:
-    description: JSON array of published demo app metadata, Gradle tasks, and output paths
+    description: JSON array of published demo app metadata with url-path, task, and html-path
     value: ${{ steps.parse.outputs.demo-apps-json }}
 runs:
   using: composite
