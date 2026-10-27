@@ -46,7 +46,7 @@ object UpdateReadmeUtil {
                 )
             module to platforms
         }
-        val allSupportedPlatforms = supportedPlatforms.map { it.second }.flatten().distinct()
+        val allSupportedPlatforms = supportedPlatforms.flatMap { it.second }.distinct()
         val allSupportedPlatformsLowercase = allSupportedPlatforms.map { it.lowercase() }
 
         val isAndroidSupported = allSupportedPlatformsLowercase.contains("android")
@@ -206,12 +206,12 @@ object UpdateReadmeUtil {
             .takeIf { it.isNotEmpty() }
             ?.joinToString(
                 separator = "\n\n",
-                prefix = "> [!TIP]\n> Try the interactive demo:\n",
+                prefix = "> [!TIP]\n> Try the interactive demo:",
                 postfix = "\n"
             ) {
                 val (app, publish) = it
                 val link = "https://mflisar.github.io/${config.project.repoName}/${publish.urlPath}/"
-                "\n> ${ReadmeDefaults.imageInteractiveDemo(label = app.name, url = link)}"
+                ">\n> ${ReadmeDefaults.imageInteractiveDemo(label = app.name, url = link)}"
             }
             .orEmpty()
 
@@ -304,7 +304,6 @@ object UpdateReadmeUtil {
                 appendLine("    repositories {")
                 appendLine("        mavenCentral()")
                 appendLine("        google()")
-                appendLine("        gradlePluginPortal()")
                 appendLine("        // ADD THIS")
                 appendLine("        maven(\"${github.fullGithubPageLinkWithPath}\")")
                 appendLine("        // ...")
@@ -364,6 +363,7 @@ object UpdateReadmeUtil {
                 val link = config.documentation.invariantMainScreenshotPath
                 appendLine("![Screenshot]($link)")
             }
+
         }
 /*
         val screenshots = if (folderDocumentationScreenshots.exists()) {
@@ -422,9 +422,9 @@ object UpdateReadmeUtil {
         val demos = buildString {
             if (config.apps.size == 1) {
                 val demo = config.apps[0]
-                appendLine("A full [demo project](${demo.invariantModulePaths}) is included.")
+                appendLine("A [demo project](${demo.invariantModulePaths}) is included.")
             } else if (config.apps.size > 1) {
-                appendLine("Following full demo projects are included:")
+                appendLine("Following demo projects are included:")
                 appendLine()
                 config.apps.forEach { app ->
                     appendLine("- [${app.name}](${app.commonInvariantModulePath()})")
@@ -433,8 +433,11 @@ object UpdateReadmeUtil {
         }
 
         val apiDocs = if (hasApiDocs) {
-            val link =
-                "https://${config.developer.githubUserName}.github.io/${config.project.repoName}/"
+            val hasDemoApps = config.apps.any { it.publish != null }
+            var link = "https://${config.developer.githubUserName}.github.io/${config.project.repoName}/"
+            if (hasDemoApps) {
+                link += "api/"
+            }
             "Check out the [API documentation]($link)."
         } else {
             ""
@@ -514,7 +517,10 @@ object UpdateReadmeUtil {
 
         // 10)  replacement - table of content
         val tableOfContent = ReadmeDefaults.allHeaders
-            .filter { it != ReadmeDefaults.headerTableOfContent }
+            .filter {
+                it != ReadmeDefaults.headerTableOfContent &&
+                        it != ReadmeDefaults.headerScreenshot
+            }
             .filter {
                 val header = it.markdownHeader()
                 if (readmeContent.contains(header)) {
