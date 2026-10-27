@@ -201,19 +201,22 @@ object UpdateReadmeUtil {
             headerLine3
         ).joinToString("\n")
 
-        val interactiveWasmDemoButton = config.apps
-            .mapNotNull { app -> app.publish?.let { publish -> app to publish } }
-            .takeIf { it.isNotEmpty() }
-            ?.joinToString(
-                separator = "\n\n",
-                prefix = "> [!TIP]\n> Try the interactive demo:",
-                postfix = "\n"
-            ) {
-                val (app, publish) = it
+        val interactiveWasmDemoButton = buildString {
+            val publishedApps = config.apps.mapNotNull { app -> app.publish?.let { publish -> app to publish } }
+            if (publishedApps.isEmpty())
+                return@buildString
+
+            appendLine("> [!TIP]")
+            appendLine("> Try the interactive demo:")
+            publishedApps.forEach { (app, publish) ->
+
                 val link = "https://mflisar.github.io/${config.project.repoName}/${publish.urlPath}/"
-                ">\n> ${ReadmeDefaults.imageInteractiveDemo(label = app.name, url = link)}"
+                val line = "> ${ReadmeDefaults.imageInteractiveDemo(label = app.name, url = link)}"
+
+                appendLine()
+                appendLine(line)
             }
-            .orEmpty()
+        }
 
         // 4) create supported platforms table
         val supportedPlatformsTable = buildString {
