@@ -42,7 +42,7 @@ data class Config(
             val validPaths = it.invariantTargetPaths
             validPaths.contains(relativePath)
         }
-        return app ?: error("Missing required 'app' section in $FILE_NAME - path: $relativePath")
+        return app ?: error("[Config::requireApp] Missing required 'app' section in $FILE_NAME - path: $relativePath")
     }
 
     fun getModuleForProject(rootDir: File, projectDir: File): Modules.Module {

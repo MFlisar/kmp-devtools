@@ -17,13 +17,18 @@ class AppModuleConfig internal constructor(
 
     companion object {
 
-        fun readManual(project: Project): AppModuleConfig {
+        fun read(project: Project): AppModuleConfig {
+
             val config = Config.read(project.rootDir)
-            val relativeProjectPath = project.relativeInvariantProjectPath()
+
+            val appInvariantPath = project.relativeInvariantProjectPath()
+            val app = config.apps.find { it.invariantTargetPaths.contains(appInvariantPath) } ?:
+                error("[AppModuleConfig::read] Missing required 'app' section in ${Config.FILE_NAME} - path: $appInvariantPath")
+
             return AppModuleConfig(
                 project = project,
                 config = config,
-                app = config.requireApp(relativeProjectPath),
+                app = app
             )
         }
     }

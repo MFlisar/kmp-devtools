@@ -1,6 +1,6 @@
 package com.michaelflisar.kmpdevtools.configs
 
-import org.gradle.api.Project
+import com.michaelflisar.kmpdevtools.core.relativeInvariantProjectPath
 import org.gradle.api.provider.Provider
 
 class AndroidLibraryConfig private constructor(
@@ -17,95 +17,36 @@ class AndroidLibraryConfig private constructor(
             minSdk: Provider<String>,
             enableAndroidResources: Boolean = true,
         ): AndroidLibraryConfig {
-            val namespace = libraryModuleConfig.config
-                .getModuleForProject(libraryModuleConfig.project.rootDir, libraryModuleConfig.project.projectDir)
-                .androidNamespace(libraryModuleConfig.config)
+
+            val libraryInvariantPath = libraryModuleConfig.project.relativeInvariantProjectPath()
+            val app = libraryModuleConfig.config
+                .apps
+                .find { it.invariantTargetPaths.contains(libraryInvariantPath) }
+
+            // 1) prüfen ob project in config apps target paths liegt
+            val namespace = if (app != null) {
+                val ns = app.namespace
+                val addons = app.invariantMainPath.replace(libraryInvariantPath, "").split("/")
+                    .filter { it.isNotBlank() }
+                ns + (if (addons.isNotEmpty()) "." else "") + addons.joinToString(".")
+            }
+            // 2) aus modulen holen
+            else {
+
+                libraryModuleConfig.config
+                    .getModuleForProject(
+                        libraryModuleConfig.project.rootDir,
+                        libraryModuleConfig.project.projectDir
+                    )
+                    .androidNamespace(libraryModuleConfig.config)
+            }
+
             return AndroidLibraryConfig(
                 compileSdk = compileSdk,
                 minSdk = minSdk,
                 enableAndroidResources = enableAndroidResources,
                 namespace = namespace
             )
-        }
-
-        fun createFromPath(
-            libraryModuleConfig: LibraryModuleConfig.Manual,
-            compileSdk: Provider<String>,
-            minSdk: Provider<String>,
-            enableAndroidResources: Boolean = true,
-            customNamespaceAddon: String? = null
-        ): AndroidLibraryConfig {
-            return AndroidLibraryConfig(
-                compileSdk = compileSdk,
-                minSdk = minSdk,
-                enableAndroidResources = enableAndroidResources,
-                namespace = createNamespaceFromPath(
-                    libraryModuleConfig.project,
-                    libraryModuleConfig.projectNamespace,
-                    customNamespaceAddon
-                )
-            )
-        }
-
-        fun createFromPath(
-            appModuleConfig: AppModuleConfig,
-            compileSdk: Provider<String>,
-            minSdk: Provider<String>,
-            enableAndroidResources: Boolean = true,
-            customNamespaceAddon: String? = null
-        ): AndroidLibraryConfig {
-            return AndroidLibraryConfig(
-                compileSdk = compileSdk,
-                minSdk = minSdk,
-                enableAndroidResources = enableAndroidResources,
-                namespace = createNamespaceFromPath(
-                    appModuleConfig.project,
-                    appModuleConfig.projectNamespace,
-                    customNamespaceAddon
-                )
-            )
-        }
-
-        private fun createNamespaceFromPath(
-            project: Project,
-            projectNamespace: String,
-            customNamespaceAddon: String?
-        ): String {
-
-            if (!customNamespaceAddon.isNullOrBlank()) {
-                return "$projectNamespace.$customNamespaceAddon"
-            }
-
-            val namespace = project.rootDir
-                .toPath()
-                .toAbsolutePath()
-                .normalize()
-                .relativize(
-                    project.projectDir
-                        .toPath()
-                        .toAbsolutePath()
-                        .normalize()
-                )
-                .filter { it.toString() != ".." }
-                .joinToString(".") {
-                    it.toString().toPackageSegment()
-                }
-
-            return if (namespace.isBlank()) {
-                projectNamespace
-            } else {
-                "$projectNamespace.$namespace"
-            }
-        }
-
-        private fun String.toPackageSegment(): String {
-            var value = replace(Regex("[^A-Za-z0-9_]"), "_")
-
-            if (value.firstOrNull()?.isDigit() == true) {
-                value = "_$value"
-            }
-
-            return value
         }
     }
 }
