@@ -120,7 +120,8 @@ data class Config(
         val namespace: String,
         @SerialName("version-name") val versionName: String,
         private val path: String,
-        @SerialName("publish-demo") val publish: Boolean,
+        @SerialName("publish-app") val publish: Boolean,
+        @SerialName("publish-path") val publishPath: String,
         @SerialName("publish-description") val publishDescription: String,
     ) {
         val invariantPath: String

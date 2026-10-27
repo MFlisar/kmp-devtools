@@ -9,6 +9,7 @@ object ReadmeDefaults {
     const val HAS_API_DOCS = true
 
     val headerTableOfContent = ReadmeRegion(null, "Table of Contents")
+    val headerScreenshot = ReadmeRegion("camera", "Screenshot")
     val headerSupportedPlatform = ReadmeRegion("computer", "Supported Platforms")
     val headerVersions = ReadmeRegion("arrow_right", "Versions")
     val headerSetup = ReadmeRegion("wrench", "Setup")
@@ -20,6 +21,7 @@ object ReadmeDefaults {
 
     val allHeaders = listOf(
         headerTableOfContent,
+        headerScreenshot,
         headerSupportedPlatform,
         headerVersions,
         headerSetup,
@@ -39,7 +41,9 @@ object ReadmeDefaults {
         
         {{ interactiveWasmDemoButton }}
         
-        {{ main-screenshot }}
+        ${headerScreenshot.markdownHeader()}
+        
+        {{ screenshot }}
         
         ${headerTableOfContent.markdownHeader()}
         

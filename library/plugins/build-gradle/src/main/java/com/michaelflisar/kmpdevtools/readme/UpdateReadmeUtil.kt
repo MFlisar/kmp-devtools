@@ -201,17 +201,18 @@ object UpdateReadmeUtil {
             headerLine3
         ).joinToString("\n")
 
-        val interactiveWasmDemoButton = buildString {
-            config.apps.filter { it.publish }.forEach {
-                val link = "https://mflisar.github.io/${config.project.repoName}/demo/"
-                val linkBadgeButton = ReadmeDefaults.imageInteractiveDemo(
-                    label = it.name,
-                    url = link
-                )
-                append(linkBadgeButton)
-                appendLine()
+        val interactiveWasmDemoButton = config.apps
+            .filter { it.publish }
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(
+                separator = "\n",
+                prefix = "> [!TIP]\n> Try the interactive demo:\n",
+                postfix = "\n"
+            ) {
+                val link = "https://mflisar.github.io/${config.project.repoName}/${it.publishPath}/"
+                "> ${ReadmeDefaults.imageInteractiveDemo(label = it.name, url = link)}"
             }
-        }
+            .orEmpty()
 
         // 4) create supported platforms table
         val supportedPlatformsTable = buildString {
@@ -355,7 +356,7 @@ object UpdateReadmeUtil {
         }
 
         // 6) create screenshot replacement
-        val mainScreenshot = buildString {
+        val screenshot = buildString {
 
             // 1) add main screenshot inline in readme
             if ((config.documentation.invariantMainScreenShotPath?.length ?: 0) > 0) {
@@ -461,7 +462,7 @@ object UpdateReadmeUtil {
             Placeholder("{{ setup-add-repository }}", setupAddRepository),
             Placeholder("{{ setup-via-version-catalogue1 }}", setupViaVersionCatalogue1),
             Placeholder("{{ setup-via-version-catalogue2 }}", setupViaVersionCatalogue2),
-            Placeholder("{{ main-screenshot }}", mainScreenshot),
+            Placeholder("{{ screenshot }}", screenshot),
             Placeholder("{{ other-libraries }}", ReadmeDefaults.GithubMyLibrariesLink),
             Placeholder(
                 "{{ compatibility-link }}",
