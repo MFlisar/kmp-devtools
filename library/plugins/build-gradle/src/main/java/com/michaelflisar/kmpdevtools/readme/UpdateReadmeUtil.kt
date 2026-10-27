@@ -16,8 +16,6 @@ object UpdateReadmeUtil {
         rootDir: File,
         config: Config,
         readmeTemplate: String = ReadmeDefaults.DefaultReadmeTemplate,
-        folderModules: String = ReadmeDefaults.FOLDER_MODULES,
-        folderScreenshots: String = ReadmeDefaults.FOLDER_SCREENSHOTS,
         hasApiDocs: Boolean = ReadmeDefaults.HAS_API_DOCS,
     ) {
         println("")
@@ -25,8 +23,6 @@ object UpdateReadmeUtil {
         println("### BEGIN Updating README.md ###")
         println("################################")
         println("")
-
-        val demoApp = config.app
 
         val modules = config.modules.modules.filter { it.artifactId.isNotEmpty() && !it.internal }
         val pluginModules = modules.filter { it.plugin }
@@ -36,9 +32,7 @@ object UpdateReadmeUtil {
         val fileAppVersionToml = File(rootDir, "gradle/app.versions.toml")
         val fileLibsVersionToml = File(rootDir, "gradle/libs.versions.toml")
         val fileReadme = File(rootDir, "README.md")
-        val folderDocumentation = File(rootDir, "documentation")
-        val folderDocumentationModules = File(rootDir, "documentation/$folderModules")
-        val folderDocumentationScreenshots = File(rootDir, "documentation/$folderScreenshots")
+        val folderDocumentation = File(rootDir, config.documentation.invariantRoot)
 
         // load data from project files
         val minSdk = readTOMLProperty(fileAppVersionToml, "versions", "minSdk").toInt()
@@ -47,7 +41,7 @@ object UpdateReadmeUtil {
                 getSupportedPlatformsFromModule(
                     File(
                         rootDir,
-                        "${module.path}/build.gradle.kts"
+                        "${module.invariantPath}/build.gradle.kts"
                     )
                 )
             module to platforms
@@ -64,42 +58,26 @@ object UpdateReadmeUtil {
         val isJsSupported = allSupportedPlatformsLowercase.contains("js")
 
         // 1) load all markdown files from the documentation folder (excluding _partials)
-        val markdownTitleRegex = Regex("^#\\s+(.*)$", RegexOption.MULTILINE)
-        //val pathDocumentation = "documentation"
-        //val pathModules = "documentation/modules"
-        val markdownFilesWithName = folderDocumentation
-            .walkTopDown()
-            .filter { it.isFile && it.extension == "md" }
-            .filter { !it.path.contains("_partials") }
-            .toList()
-            .sortedBy { it.path }
-            .map {
-                val content = it.readText()
-                // extract name from first markdown header
-                val nameMatch = markdownTitleRegex.find(content)
-                val name = nameMatch?.groups?.get(1)?.value?.trim() ?: it.nameWithoutExtension
-                CustomMarkdownFile(it, name)
-            }
+        val markdownFilesWithName = findAllMarkdownFilesWithNames(folderDocumentation, config)
 
-        // 2) get all modules and other markdown files als hierarchische Links
-        val moduleLinks = markdownFilesWithName
-            .filter { it.startsWithIgnoreCase(folderDocumentationModules) }
-            .map {
-                val relativePath = it.relativePathTo(rootDir)
-                val encodedRelativePath = encodeRelativeLink(relativePath)
-                "- [${it.name}]($encodedRelativePath)"
-            }
-        val otherLinks = buildMarkdownLinks(
+        // 2) get all documentation folders as hierarchical markdown "link tree"
+        val additionalDocsTable = buildMarkdownLinks(
             buildFolderLinkHierarchy(
-                markdownFilesWithName.filter {
-                    !it.startsWithIgnoreCase(
-                        folderDocumentationModules
-                    )
-                },
+                markdownFilesWithName,
                 rootDir,
-                folderDocumentation
+                folderDocumentation,
+                config.documentation.sortedFolders
             )
         )
+        val additionalDocs = buildString {
+            if (additionalDocsTable.isNotEmpty()) {
+                appendLine("Browse following guides for more details.")
+                appendLine()
+                additionalDocsTable.forEach {
+                    appendLine(it)
+                }
+            }
+        }
 
         val ignoreExperimentalAnnoation = { annotation: String ->
             (annotation.startsWith("com.michaelflisar") && annotation.contains("Internal")) ||
@@ -109,7 +87,7 @@ object UpdateReadmeUtil {
 
         var experimentalAnnotations = listOf<ExperimentalAnnotationInfo>()
         modules
-            .map { module -> File(rootDir, module.path) }
+            .map { module -> File(rootDir, module.invariantPath) }
             .map { it.walkTopDown() }
             .flatMap { it }
             .filter { it.isFile && it.extension in listOf("kt") }
@@ -189,17 +167,18 @@ object UpdateReadmeUtil {
         val imageMavenCentral = if (config.publish.target == Config.Publish.Target.MAVEN_CENTRAL) {
             ReadmeDefaults.imageMavenCentral(config)
         } else null
-            val imageGithubMaven = if (config.publish.target == Config.Publish.Target.GITHUB) {
-                ReadmeDefaults.imageGithubMaven(config.publish.requireGithub())
-            } else null
+        val imageGithubMaven = if (config.publish.target == Config.Publish.Target.GITHUB) {
+            ReadmeDefaults.imageGithubMaven(config.publish.requireGithub())
+        } else null
 
         val imageAPI = ReadmeDefaults.imageAPI(minSdk)
         val imageKotlin = ReadmeDefaults.imageKotlin(config)
         val imageKMP = ReadmeDefaults.imageKMP()
         //val imageLicence = ReadmeDefaults.imageLicence(config)
 
-        val headerLine1 = listOfNotNull(imageMavenCentral, imageGithubMaven, imageAPI, imageKotlin, imageKMP)
-            .joinToString(" ")
+        val headerLine1 =
+            listOfNotNull(imageMavenCentral, imageGithubMaven, imageAPI, imageKotlin, imageKMP)
+                .joinToString(" ")
         val headerLine2 = "# ${config.project.repoName}"
         val headerLine3 = listOfNotNull(
             ReadmeDefaults.ImageSupportedPlatforms,
@@ -219,10 +198,14 @@ object UpdateReadmeUtil {
         ).joinToString("\n")
 
         val interactiveWasmDemoButton = buildString {
-            if (demoApp?.interactiveWasmDemo == true) {
-                val image = ReadmeDefaults.imageInteractiveDemo
+            config.apps.filter { it.publish }.forEach {
                 val link = "https://mflisar.github.io/${config.project.repoName}/demo/"
-                appendLine( "[![Open Interactive Demo]($image)]($link)")
+                val linkBadgeButton = ReadmeDefaults.imageInteractiveDemo(
+                    label = it.name,
+                    url = link
+                )
+                append(linkBadgeButton)
+                appendLine()
             }
         }
 
@@ -237,7 +220,8 @@ object UpdateReadmeUtil {
                         if (module.plugin) {
                             "-"
                         } else {
-                            if (platforms.map { it.lowercase() }.contains(platform.lowercase())) "✅" else "❌"
+                            if (platforms.map { it.lowercase() }
+                                    .contains(platform.lowercase())) "✅" else "❌"
                         }
                     } + module.description
                 appendLine("| " + row.joinToString(" | ") + " |")
@@ -348,8 +332,7 @@ object UpdateReadmeUtil {
 
         }
         val setupViaVersionCatalogue2 = buildString {
-            if (pluginModules.isNotEmpty())
-            {
+            if (pluginModules.isNotEmpty()) {
                 appendLine("plugins {")
                 for (module in pluginModules) {
                     val key = "${libraryName}-${module.artifactId}".replace("-", ".")
@@ -368,6 +351,15 @@ object UpdateReadmeUtil {
         }
 
         // 6) create screenshot replacement
+        val screenshots = buildString {
+
+            // 1) add main screenshot inline in readme
+            if ((config.documentation.invariantMainScreenShotPath?.length ?: 0) > 0) {
+                val link = "${config.documentation.invariantRoot}/${config.documentation.folderScreenshots}/${config.documentation.invariantMainScreenShotPath}"
+                appendLine("![Screenshot]($link)")
+            }
+        }
+/*
         val screenshots = if (folderDocumentationScreenshots.exists()) {
             val excludedScreenshots = mutableListOf<File>()
             val result = folderDocumentationScreenshots
@@ -420,11 +412,19 @@ object UpdateReadmeUtil {
             }.joinToString("\n")
         } else
             buildMarkdownTable(null, screenshots, 3) { it.markdownImage }
-
-        val demo = if (demoApp != null) {
-            "A full [demo project](${demoApp.path}) is included inside the demo module, it shows nearly every usage with working examples."
+*/
+        val demos = buildString {
+            if (config.apps.size == 1) {
+                val demo = config.apps[0]
+                appendLine("A full [demo project](${demo.invariantPath}) is included.")
+            } else if (config.apps.size > 1) {
+                appendLine("Following full demo projects are included:")
+                appendLine()
+                config.apps.forEach {
+                    appendLine("- [${it.name}](${it.invariantPath})")
+                }
+            }
         }
-        else ""
 
         val apiDocs = if (hasApiDocs) {
             val link =
@@ -449,19 +449,21 @@ object UpdateReadmeUtil {
                 "{{ partials.usage }}",
                 File(rootDir, "documentation/_partials/usage.md.partial")
             ),
-            Placeholder("{{ modules }}", moduleLinks.joinToString("\n")),
-            Placeholder("{{ links }}", otherLinks.joinToString("\n")),
-            Placeholder("{{ supported_platforms }}", supportedPlatformsTable),
+            Placeholder("{{ usage-browse-infos }}", additionalDocs),
+            Placeholder("{{ supported-platforms }}", supportedPlatformsTable),
             Placeholder("{{ versions }}", versionsTable),
             Placeholder("{{ experimental }}", experimentalInfo),
             Placeholder("{{ setup-via-dependencies }}", setupViaDependencies),
             Placeholder("{{ setup-add-repository }}", setupAddRepository),
             Placeholder("{{ setup-via-version-catalogue1 }}", setupViaVersionCatalogue1),
             Placeholder("{{ setup-via-version-catalogue2 }}", setupViaVersionCatalogue2),
-            Placeholder("{{ screenshots }}", screenshotsTable),
+            Placeholder("{{ screenshots }}", screenshots),
             Placeholder("{{ other-libraries }}", ReadmeDefaults.GithubMyLibrariesLink),
-            Placeholder("{{ compatibility-link }}", ReadmeDefaults.GithubLibrariesCompatibilityLink),
-            Placeholder("{{ demo }}", demo),
+            Placeholder(
+                "{{ compatibility-link }}",
+                ReadmeDefaults.GithubLibrariesCompatibilityLink
+            ),
+            Placeholder("{{ demo }}", demos),
             Placeholder("{{ api-docs }}", apiDocs),
         )
         for (replacement in replacements) {
@@ -654,7 +656,7 @@ object UpdateReadmeUtil {
 
     private fun buildMarkdownLinks(folders: List<FolderLink>): List<String> {
         fun build(folderLinks: List<FolderLink>, indent: String = ""): List<String> {
-            return folderLinks.sortedBy { it.name }.flatMap { folder ->
+            return folderLinks.flatMap { folder ->
                 val lines = mutableListOf<String>()
                 if (folder.link != null) {
                     lines.add("$indent- ${folder.link}")
@@ -675,18 +677,29 @@ object UpdateReadmeUtil {
         customMarkdownFiles: List<CustomMarkdownFile>,
         rootDir: File,
         folderDocumentation: File,
+        sortedRootFolderNames: List<String>
     ): List<FolderLink> {
 
         // 1. Alle relativen Pfade zu den Markdown-Dateien bestimmen
         val relPaths = customMarkdownFiles.map { it.relativePathTo(folderDocumentation) }
 
         // 2. Hierarchie-Baum aufbauen
+        val rootFolderOrder = sortedRootFolderNames.withIndex().associate { it.value to it.index }
         fun buildTree(paths: List<String>, parent: String = ""): List<FolderLink> {
             val grouped = paths.groupBy {
                 val key = it.substringBefore("/", it)
                 key
             }
-            return grouped.entries.sortedBy { it.key }.map { (key, group) ->
+            val entries = if (parent.isEmpty()) {
+                grouped.entries.sortedWith(
+                    compareBy<Map.Entry<String, List<String>>> {
+                        rootFolderOrder[it.key] ?: Int.MAX_VALUE
+                    }.thenBy { it.key }
+                )
+            } else {
+                grouped.entries.sortedBy { it.key }
+            }
+            return entries.map { (key, group) ->
                 val children = group.filter { it.contains("/") }.map { it.substringAfter("/") }
                 val fullPath = if (parent.isEmpty()) key else "$parent/$key"
                 if (children.isNotEmpty()) {
@@ -710,6 +723,7 @@ object UpdateReadmeUtil {
                 }
             }
         }
+
         return buildTree(relPaths)
     }
 
@@ -803,4 +817,25 @@ object UpdateReadmeUtil {
         val relativePath = relativeFile.path.replace("\\", "/")
         val markdownImage = "![${relativeFile.nameWithoutExtension}]($relativePath)"
     }
+}
+
+private fun findAllMarkdownFilesWithNames(
+    folderDocumentation: File,
+    config: Config,
+): List<CustomMarkdownFile> {
+    val markdownTitleRegex = Regex("^#\\s+(.*)$", RegexOption.MULTILINE)
+    val markdownFilesWithName = folderDocumentation
+        .walkTopDown()
+        .filter { it.isFile && it.extension == "md" }
+        .filter { !it.path.contains("/${config.documentation.folderPartials}/") }
+        .toList()
+        .sortedBy { it.path }
+        .map {
+            val content = it.readText()
+            // extract name from first markdown header
+            val nameMatch = markdownTitleRegex.find(content)
+            val name = nameMatch?.groups?.get(1)?.value?.trim() ?: it.nameWithoutExtension
+            CustomMarkdownFile(it, name)
+        }
+    return markdownFilesWithName
 }

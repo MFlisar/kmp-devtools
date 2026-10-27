@@ -6,8 +6,6 @@ import com.michaelflisar.kmpdevtools.readme.classes.ReadmeRegion
 
 object ReadmeDefaults {
 
-    const val FOLDER_MODULES = "modules"
-    const val FOLDER_SCREENSHOTS = "screenshots"
     const val HAS_API_DOCS = true
 
     val headerTableOfContent = ReadmeRegion(null, "Table of Contents")
@@ -16,9 +14,7 @@ object ReadmeDefaults {
     val headerVersions = ReadmeRegion("arrow_right", "Versions")
     val headerSetup = ReadmeRegion("wrench", "Setup")
     val headerUsage = ReadmeRegion("rocket", "Usage")
-    val headerModules = ReadmeRegion("file_folder", "Modules")
     val headerDemo = ReadmeRegion("sparkles", "Demo")
-    val headerMore = ReadmeRegion("information_source", "More")
     val headerOtherLibraries = ReadmeRegion("bulb", "Other Libraries")
     val headerCompatibility = ReadmeRegion("twisted_rightwards_arrows", "Compatibility")
     val headerApiDocs = ReadmeRegion("books", "API")
@@ -30,9 +26,7 @@ object ReadmeDefaults {
         headerVersions,
         headerSetup,
         headerUsage,
-        headerModules,
         headerDemo,
-        headerMore,
         headerApiDocs,
         headerOtherLibraries
     )
@@ -44,12 +38,12 @@ object ReadmeDefaults {
         {{ header }}
 
         {{ partials.info }}
-
+        
+        {{ interactiveWasmDemoButton }}
+        
         ${headerTableOfContent.markdownHeader()}
         
         {{ tableOfContent }}
-        
-        {{ interactiveWasmDemoButton }}
 
         ${headerScreenshots.markdownHeader()}
 
@@ -57,7 +51,7 @@ object ReadmeDefaults {
 
         ${headerSupportedPlatform.markdownHeader()}
 
-        {{ supported_platforms }}
+        {{ supported-platforms }}
         
         ${headerVersions.markdownHeader()}
 
@@ -106,18 +100,12 @@ object ReadmeDefaults {
         ${headerUsage.markdownHeader()}
 
         {{ partials.usage }}
-
-        ${headerModules.markdownHeader()}
-
-        {{ modules }}
+        
+        {{ usage-browse-infos }}
 
         ${headerDemo.markdownHeader()}
 
         {{ demo }}
-
-        ${headerMore.markdownHeader()}
-
-        {{ links }}
         
         ${headerApiDocs.markdownHeader()}
         
@@ -167,16 +155,25 @@ object ReadmeDefaults {
         altText = "JavaScript"
     )
 
+    fun imageInteractiveDemo(
+        label: String,
+        url: String
+    ) = UpdateReadmeUtil.markdownImage(
+        imageUrl = "https://img.shields.io/badge/${label.replace(" ", "_").replace("-", "--")}-2962FF?style=for-the-badge&logo=googlechrome&logoColor=white",
+        altText = "Open Interactive Demo",
+        linkUrl = url
+    )
+
     val imageInteractiveDemo = "https://raw.githubusercontent.com/MFlisar/kmp-devtools/refs/heads/main/resources/open-interactive-demo.svg"
 
     fun imageMavenCentral(config: Config) = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/maven-central/v/${config.publish.groupId}/${config.modules.primaryArtifactId}?style=for-the-badge&color=blue",
+        imageUrl = "https://img.shields.io/maven-central/v/${config.publish.groupId}/${config.modules.primaryArtifactId}?color=blue",
         altText = "Maven Central",
         linkUrl = "https://central.sonatype.com/artifact/${config.publish.groupId}/${config.modules.primaryArtifactId}"
     )
 
     fun imageGithubMaven(github: Config.Publish.Github)= UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/${github.user}-${github.repo.replace("-", "--")}-brightgreen?style=for-the-badge&color=blue",
+        imageUrl = "https://img.shields.io/badge/${github.user}-${github.repo.replace("-", "--")}-brightgreen?color=blue",
         altText = "${github.user}/${github.repo}",
         linkUrl = github.fullGithubPageLink
     )
@@ -187,18 +184,18 @@ object ReadmeDefaults {
     )
 
     fun imageKotlin(config: Config) = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/github/languages/top/${config.developer.githubUserName}/${config.project.repoName}.svg?style=for-the-badge&amp;color=blueviolet",
+        imageUrl = "https://img.shields.io/github/languages/top/${config.developer.githubUserName}/${config.project.repoName}.svg?color=blueviolet",
         altText = "Kotlin"
     )
 
     fun imageKMP() = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/Kotlin_Multiplatform-blue?style=for-the-badge&amp;label=Kotlin",
+        imageUrl = "https://img.shields.io/badge/Kotlin_Multiplatform-blue?label=Kotlin",
         altText = "Kotlin Multiplatform"
     )
 
     fun imageLicence(config: Config) = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/github/license/${config.developer.githubUserName}/${config.project.repoName}?style=for-the-badge",
+        imageUrl = "https://img.shields.io/github/license/${config.developer.githubUserName}/${config.project.repoName}",
         altText = "License",
-        linkUrl = "https://github.com/${config.developer.githubUserName}/${config.project.repoName}/${config.project.license.path}"
+        linkUrl = "https://github.com/${config.developer.githubUserName}/${config.project.repoName}/${config.project.license.invariantPath}"
     )
 }

@@ -9,10 +9,10 @@ import java.io.File
 data class Config(
     val publish: Publish,
     @SerialName("config") val general: General,
-    val app: App? = null,
+    val apps: List<App>,
     val project: Project,
     val modules: Modules,
-    val readme: Readme = Readme(),
+    val documentation: Documentation,
     val settings: Settings = Settings(),
 ) {
     companion object {
@@ -32,12 +32,20 @@ data class Config(
     val developer: Developer
         get() = general.developer
 
-    fun requireApp(): App =
-        app ?: error("Missing required 'app' section in configs/$FILE_NAME")
+    fun requireApp(project: org.gradle.api.Project): App {
+        val relativePath = project.relativeInvariantProjectPath()
+        return requireApp(relativePath)
+    }
+
+    fun requireApp(relativeInvariantProjectPath: String): App {
+        val app = apps.find { it.invariantPath == relativeInvariantProjectPath }
+        return app ?: error("Missing required 'app' section in $FILE_NAME - path: $relativeInvariantProjectPath")
+    }
+
 
     fun getModuleForProject(rootDir: File, projectDir: File): Modules.Module {
         val path = projectDir.relativeTo(rootDir).invariantSeparatorsPath
-        return modules.modules.find { it.path.replace("\\", "/") == path.replace("\\", "/") }
+        return modules.modules.find { it.invariantPath == path }
             ?: error("Module setup not found for path '$path'; define it in config.yml")
     }
 
@@ -111,9 +119,13 @@ data class Config(
         val name: String,
         val namespace: String,
         @SerialName("version-name") val versionName: String,
-        val path: String,
-        @SerialName("interactive-wasm-demo") val interactiveWasmDemo: Boolean
-    )
+        private val path: String,
+        @SerialName("publish-demo") val publish: Boolean,
+        @SerialName("publish-description") val publishDescription: String,
+    ) {
+        val invariantPath: String
+            get() = path.invariantPath()
+    }
 
     @Serializable
     data class Project(
@@ -134,10 +146,13 @@ data class Config(
         @Serializable
         data class License(
             val name: String,
-            val path: String,
+            private val path: String,
         ) {
             fun getLink(developer: Developer, project: Project): String =
-                "${project.getRepoLink(developer)}${path.trimStart('/')}"
+                "${project.getRepoLink(developer)}${invariantPath}"
+
+            val invariantPath: String
+                get() = path.invariantPath()
         }
     }
 
@@ -151,7 +166,7 @@ data class Config(
         data class Module(
             @SerialName("artifact-id") val artifactId: String,
             val description: String,
-            val path: String,
+            private val path: String,
             val plugin: Boolean = false,
             val internal: Boolean = false,
         ) {
@@ -162,6 +177,9 @@ data class Config(
                 val artifactIdPart = artifactId.replace("-", ".")
                 return "${config.project.namespace}.$artifactIdPart"
             }
+
+            val invariantPath: String
+                get() = path.invariantPath()
         }
 
         @Serializable
@@ -173,16 +191,18 @@ data class Config(
     }
 
     @Serializable
-    data class Readme(
-        val screenshots: Screenshots = Screenshots(),
+    data class Documentation(
+        @SerialName("root-path") private val rootPath: String,
+        @SerialName("folder-partials") val folderPartials: String,
+        @SerialName("folder-screenshots") val folderScreenshots: String,
+        @SerialName("main-screenshot-path") private val mainScreenshotPath: String? = null,
+        @SerialName("sorted-folder") val sortedFolders: List<String>,
     ) {
-        @Serializable
-        data class Screenshots(
-            @SerialName("exclude-root") val excludeRoot: Boolean = true,
-            @SerialName("group-by-folder") val groupByFolders: Boolean = true,
-            @SerialName("excluded-folders") val excludedFolders: List<String> = emptyList(),
-            @SerialName("excluded-images") val excludedImages: List<String> = emptyList(),
-        )
+        val invariantRoot: String
+            get() = rootPath.invariantPath()
+
+        val invariantMainScreenShotPath: String?
+            get() = mainScreenshotPath?.invariantPath()
     }
 
     @Serializable

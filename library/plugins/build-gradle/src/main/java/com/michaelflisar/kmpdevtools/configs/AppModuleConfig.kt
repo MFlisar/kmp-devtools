@@ -1,6 +1,7 @@
 package com.michaelflisar.kmpdevtools.configs
 
 import com.michaelflisar.kmpdevtools.core.Config
+import com.michaelflisar.kmpdevtools.core.relativeInvariantProjectPath
 import org.gradle.api.Project
 
 class AppModuleConfig internal constructor(
@@ -11,13 +12,19 @@ class AppModuleConfig internal constructor(
     val projectNamespace: String
         get() = config.project.namespace
 
+    val relativeInvariantProjectPath
+        get() = project.relativeInvariantProjectPath()
+
     companion object {
+
+
         fun readManual(project: Project): AppModuleConfig {
             val config = Config.read(project.rootDir)
+            val relativeProjectPath = project.relativeInvariantProjectPath()
             return AppModuleConfig(
                 project = project,
                 config = config,
-                app = config.requireApp(),
+                app = config.requireApp(relativeProjectPath),
             )
         }
     }

@@ -198,6 +198,7 @@ fun BuildKonfigExtension.isExe(project: Project): Boolean {
 }
 
 fun BuildKonfigExtension.setupBuildKonfig(
+    project: Project,
     config: Config,
     versionFormatter: ChangelogVersionFormatter? = DefaultVersionFormatter(DefaultVersionFormatter.Format.MajorMinorPatch),
     exposeObjectWithName: String = "BuildKonfig",
@@ -205,7 +206,7 @@ fun BuildKonfigExtension.setupBuildKonfig(
     isExe: Boolean? = null,
     configure: TargetConfigDsl.() -> Unit = {},
 ) {
-    val app = config.requireApp()
+    val app = config.requireApp(project)
     packageName.set(app.namespace)
     this.exposeObjectWithName.set(exposeObjectWithName)
     defaultConfigs {

@@ -439,7 +439,7 @@ object BuildFileUtil {
         config.modules.modules
             .filter { it.artifactId.isNotEmpty() }
             .forEach {
-                val moduleName = ModuleUtil.folderToModuleName(it.path, libraryId)
+                val moduleName = ModuleUtil.folderToModuleName(it.invariantPath, libraryId)
                 val moduleProject = project.project(moduleName)
                 moduleProject.pluginManager.apply("org.jetbrains.dokka")
                 project.dependencies.add(

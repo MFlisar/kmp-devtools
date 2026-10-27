@@ -3,9 +3,10 @@ package com.michaelflisar.kmpdevtools
 import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.readme.ReadmeDefaults
 import com.michaelflisar.kmpdevtools.readme.UpdateReadmeUtil
+import com.michaelflisar.kmpdevtools.tasks.DownloadFilesTask
+import com.michaelflisar.kmpdevtools.tasks.UpdateDevToolsTask
 import com.michaelflisar.kmpdevtools.tooling.MacActions
 import com.michaelflisar.kmpdevtools.tooling.MacDefaults
-import com.michaelflisar.kmpdevtools.tooling.ProjectActions
 import com.michaelflisar.kmpdevtools.tooling.ToolingSetup
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
@@ -36,7 +37,6 @@ class BuildFilePlugin : Plugin<Project> {
         if (project == project.rootProject) {
             project.tasks.register("updateMarkdownFiles", UpdateMarkdownFilesTask::class.java)
             project.tasks.register("macActions", MacActionsTask::class.java)
-            project.tasks.register("updateDevToolsVersion", UpdateDevToolsVersionTask::class.java)
             project.tasks.register("devTools", DevToolsTask::class.java)
         }
     }
@@ -74,18 +74,10 @@ abstract class UpdateMarkdownFilesTask : BaseTask() {
     abstract val template: Property<String>
 
     @get:Input
-    abstract val folderModules: Property<String>
-
-    @get:Input
-    abstract val folderScreenshots: Property<String>
-
-    @get:Input
     abstract val hasApiDocs: Property<String>
 
     init {
         template.convention(ReadmeDefaults.DefaultReadmeTemplate)
-        folderModules.convention(ReadmeDefaults.FOLDER_MODULES)
-        folderScreenshots.convention(ReadmeDefaults.FOLDER_SCREENSHOTS)
         hasApiDocs.convention(ReadmeDefaults.HAS_API_DOCS.toString())
     }
 
@@ -96,8 +88,6 @@ abstract class UpdateMarkdownFilesTask : BaseTask() {
             rootDir = rootDirectory.get().asFile,
             config = config,
             readmeTemplate = template.get(),
-            folderModules = folderModules.get(),
-            folderScreenshots = folderScreenshots.get(),
             hasApiDocs = hasApiDocs.get().toBoolean()
         )
     }
@@ -121,14 +111,6 @@ abstract class MacActionsTask : BaseTask() {
     }
 }
 
-abstract class UpdateDevToolsVersionTask : BaseTask() {
-
-    @TaskAction
-    fun run() {
-        ProjectActions.updateDevToolsVersion(rootDirectory.get().asFile)
-    }
-}
-
 abstract class DevToolsTask : BaseTask() {
 
     @TaskAction
@@ -136,19 +118,29 @@ abstract class DevToolsTask : BaseTask() {
 
         val root = readRoot()
 
+        val tasks = listOf(
+            UpdateDevToolsTask("u"),
+            DownloadFilesTask("d")
+        )
+
         println()
         println("-------------------")
         println("Available Tasks:")
         println("-------------------")
-        println("- (1) [u] updateDevToolsVersion")
-        println("- (2) [r] project renamer")
 
-        val input = ProjectActions.readUserInput("Enter task number/key: ").lowercase().trim()
+        tasks.forEachIndexed { index, task ->
+            val description = task.description.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty()
+            println("- (${index + 1}) [${task.shortcut}] ${task.name}$description")
+        }
 
-        when (input) {
-            "1", "u" -> ProjectActions.updateDevToolsVersion(root)
-            "2", "r" -> ProjectActions.runProjectRenamer()
-            else -> println("Invalid input")
+        val input = TaskUtil.readUserInput("Enter task number/key: ").lowercase().trim()
+        val selectedTask = tasks.firstOrNull { it.shortcut.equals(input, ignoreCase = true) }
+            ?: input.toIntOrNull()?.let { tasks.getOrNull(it - 1) }
+
+        if (selectedTask != null) {
+            selectedTask.run(root)
+        } else {
+            println("Invalid input")
         }
 
     }

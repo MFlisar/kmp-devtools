@@ -14,23 +14,29 @@ object SettingsFileUtil {
         libraryFolder: String = "library",
     ) {
         val modules = config.modules.modules
-        val allPaths = modules.map { it.path }.distinct()
+        val allPaths = modules.map { it.invariantPath }.distinct()
         val foldersInPaths = allPaths.map { it.substringBeforeLast("/", "") }.distinct()
 
         // include all folders first
         foldersInPaths.forEach {
             val name = ModuleUtil.folderToModuleName(it, libraryName, libraryFolder)
+            val projectDir = File(settings.rootDir, it)
             settings.include(name)
-            settings.project(name).projectDir = File(settings.rootDir, it)
+            settings.project(name).projectDir = projectDir
         }
 
         // then include all modules
         println()
         println("Including modules - libraryName = '$libraryName'")
         modules.forEach {
-            val name = ModuleUtil.folderToModuleName(it.path, libraryName, libraryFolder)
-            includeModule(settings, it.path, name)
-            println("- $name => ${it.path}")
+            val name = ModuleUtil.folderToModuleName(it.invariantPath, libraryName, libraryFolder)
+
+            val projectDir = File(settings.rootDir, it.invariantPath)
+            if (!projectDir.isDirectory) {
+                error("The module from the config file does not exist:\n$name => ${it.invariantPath}")
+            }
+
+            includeModule(settings, it.invariantPath, name)
         }
     }
 
@@ -56,7 +62,6 @@ object SettingsFileUtil {
             val relativePath = projectFolder.relativeTo(settings.rootDir).invariantSeparatorsPath
             val name = ":" + relativePath.replace("/", ":")
             includeModule(settings, relativePath, name)
-            println("- $name => $relativePath")
         }
     }
 
@@ -66,7 +71,6 @@ object SettingsFileUtil {
         println()
         println("Including dokka module")
         includeModule(settings, relativePath, name)
-        println("- $name => $relativePath")
     }
 
     /**
@@ -75,8 +79,13 @@ object SettingsFileUtil {
      * includeModule(":toolbox:core") => "$folder\\library\\core"
      */
     fun includeModule(settings: Settings, fullPath: String, name: String) {
+        val projectDir = File(settings.rootDir, fullPath)
+        if (!projectDir.isDirectory) {
+            error("The directory for the $name module does not exit! ($fullPath)")
+        }
         settings.include(name)
-        settings.project(name).projectDir = File(fullPath)
+        settings.project(name).projectDir = projectDir
+        println("- $name => $fullPath")
     }
 
     /**
@@ -145,5 +154,13 @@ object SettingsFileUtil {
             return null
         }
         return settings.providers.gradleProperty(property).get().toBoolean()
+    }
+
+    /**
+     * checks system flags:
+     *
+     */
+    fun includeAppsAndDemos() : Boolean {
+        return System.getenv("CI") != "true" || System.getenv("INCLUDE_DEMO_MODULES") == "true"
     }
 }
