@@ -219,22 +219,30 @@ data class Config(
 
     @Serializable
     data class Documentation(
-        @SerialName("root-path") private val rootPath: String,
-        @SerialName("partials-path") private val partialsPath: String,
-        @SerialName("screenshots-path") private val screenshotsPath: String,
-        @SerialName("main-screenshot-path") private val mainScreenshotPath: String? = null,
+        private val path: String,
+        @SerialName("relative-paths") val relativePaths: RelativePaths,
     ) {
         val invariantRoot: String
-            get() = rootPath.invariantPath()
+            get() = path.invariantPath()
 
         val invariantPartialsPath: String
-            get() = partialsPath.invariantPath()
+            get() = resolvePath(relativePaths.partials)
 
         val invariantScreenshotsPath: String
-            get() = screenshotsPath.invariantPath()
+            get() = resolvePath(relativePaths.screenshots)
 
         val invariantMainScreenshotPath: String?
-            get() = mainScreenshotPath?.invariantPath()
+            get() = relativePaths.mainScreenshot?.takeIf { it.isNotEmpty() }?.let(::resolvePath)
+
+        private fun resolvePath(relativePath: String): String =
+            "${invariantRoot.trimEnd('/')}/${relativePath.invariantPath().trimStart('/')}"
+
+        @Serializable
+        data class RelativePaths(
+            val partials: String,
+            val screenshots: String,
+            @SerialName("main-screenshot") val mainScreenshot: String? = null,
+        )
     }
 
     @Serializable
