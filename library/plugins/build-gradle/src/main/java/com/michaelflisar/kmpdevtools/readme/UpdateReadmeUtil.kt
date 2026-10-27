@@ -205,12 +205,12 @@ object UpdateReadmeUtil {
             .filter { it.publish }
             .takeIf { it.isNotEmpty() }
             ?.joinToString(
-                separator = "\n",
+                separator = "\n\n",
                 prefix = "> [!TIP]\n> Try the interactive demo:\n",
                 postfix = "\n"
             ) {
                 val link = "https://mflisar.github.io/${config.project.repoName}/${it.publishPath}/"
-                "> ${ReadmeDefaults.imageInteractiveDemo(label = it.name, url = link)}"
+                "\n> ${ReadmeDefaults.imageInteractiveDemo(label = it.name, url = link)}"
             }
             .orEmpty()
 
