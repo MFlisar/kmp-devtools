@@ -213,7 +213,7 @@ object UpdateReadmeUtil {
                 val link = "https://mflisar.github.io/${config.project.repoName}/${publish.urlPath}/"
                 val line = "> ${ReadmeDefaults.imageInteractiveDemo(label = app.name, url = link)}"
 
-                appendLine()
+                appendLine("> ")
                 appendLine(line)
             }
         }
@@ -425,7 +425,7 @@ object UpdateReadmeUtil {
         val demos = buildString {
             if (config.apps.size == 1) {
                 val demo = config.apps[0]
-                appendLine("A [demo project](${demo.invariantModulePaths}) is included.")
+                appendLine("A [demo project](${demo.commonInvariantModulePath()}) is included.")
             } else if (config.apps.size > 1) {
                 appendLine("Following demo projects are included:")
                 appendLine()

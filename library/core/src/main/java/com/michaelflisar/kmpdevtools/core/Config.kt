@@ -128,6 +128,9 @@ data class Config(
         val invariantModulePaths: List<String>
             get() = modulePaths.map { it.invariantPath() }
 
+        // soll folgendes machen:
+        // invariantModulePaths = [demo/app/web, demo/app/windows, demo/shared]
+        // -> commonInvariantModulePath = demo/app
         fun commonInvariantModulePath(): String {
             val modulePaths = invariantModulePaths.map { path ->
                 path.trim('/').split('/').filter { it.isNotEmpty() }

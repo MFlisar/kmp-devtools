@@ -19,9 +19,10 @@ object ReadmeDefaults {
     val headerCompatibility = ReadmeRegion("twisted_rightwards_arrows", "Compatibility")
     val headerApiDocs = ReadmeRegion("books", "API")
 
+    // gleich sortieren wie im template!
     val allHeaders = listOf(
-        headerTableOfContent,
         headerScreenshot,
+        headerTableOfContent,
         headerSupportedPlatform,
         headerVersions,
         headerSetup,
