@@ -1,0 +1,482 @@
+# -----------------------
+# Update GitHub Pages
+# - builds Dokka and optionally one or more Wasm demos
+# - reads Java, project, and demo settings from .config.yml
+# - demos enabled: landing page, Dokka at /api/, demos at configured paths
+# - demo disabled: Dokka directly at the site root
+# - deploys the artifact to GitHub Pages
+# -----------------------
+
+name: Update GitHub Pages
+run-name: "[${{ github.event_name }}] Update GitHub Pages"
+
+on:
+  push:
+    branches: [ main, master ]
+
+env:
+  DOKKA_GRADLE_TASK: ":dokka:dokkaGenerate"             # required
+  DOKKA_HTML_PATH: "library/dokka/build/dokka/html"     # required
+
+permissions:
+  contents: read
+
+jobs:
+  read-config:
+    name: Read GitHub Pages settings
+    runs-on: ubuntu-latest
+    outputs:
+      java-version: ${{ steps.read-config.outputs.java-version }}
+      page-title: ${{ steps.read-config.outputs.page-title }}
+      demo-enabled: ${{ steps.read-config.outputs.demo-enabled }}
+      demo-apps-json: ${{ steps.read-config.outputs.demo-apps-json }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read settings from .config.yml
+        id: read-config
+        uses: ./.github/actions/read-config
+
+  build-dokka:
+    name: Build Dokka
+    needs: read-config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ needs.read-config.outputs.java-version }}
+
+      - name: Grant Permission to Execute Gradle
+        run: chmod +x gradlew
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build Dokka HTML
+        run: ./gradlew "$DOKKA_GRADLE_TASK"
+
+      - name: Upload Dokka artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dokka-html
+          path: ${{ env.DOKKA_HTML_PATH }}
+          if-no-files-found: error
+
+  build-demo:
+    name: Build Wasm demos
+    needs: read-config
+    if: ${{ needs.read-config.outputs.demo-enabled == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ needs.read-config.outputs.java-version }}
+
+      - name: Grant Permission to Execute Gradle
+        run: chmod +x gradlew
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build Wasm demos
+        env:
+          INCLUDE_DEMO_MODULES: "true"
+          DEMO_APPS_JSON: ${{ needs.read-config.outputs.demo-apps-json }}
+          DEMO_BUILD_PATH: ${{ runner.temp }}/wasm-demos
+        run: |
+          set -euo pipefail
+          ruby -rjson -e '
+            JSON.parse(ENV.fetch("DEMO_APPS_JSON")).map { |app| app.fetch("task") }.uniq.each do |task|
+              puts task
+            end
+          ' > "$RUNNER_TEMP/demo-tasks"
+          mapfile -t DEMO_TASKS < "$RUNNER_TEMP/demo-tasks"
+          ./gradlew "${DEMO_TASKS[@]}"
+
+          ruby -rjson -rfileutils -e '
+            root = ENV.fetch("DEMO_BUILD_PATH")
+            JSON.parse(ENV.fetch("DEMO_APPS_JSON")).each do |app|
+              source = app.fetch("html-path")
+              abort "Demo output not found: #{source}" unless Dir.exist?(source)
+              abort "Demo index not found: #{source}/index.html" unless File.file?(File.join(source, "index.html"))
+
+              destination = File.join(root, app.fetch("publish-path"))
+              FileUtils.mkdir_p(destination)
+              Dir.children(source).each do |entry|
+                FileUtils.cp_r(File.join(source, entry), destination)
+              end
+            end
+          '
+
+      - name: Upload Wasm demo artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: wasm-demos
+          path: ${{ runner.temp }}/wasm-demos
+          if-no-files-found: error
+
+  publish-pages:
+    name: Publish GitHub Pages
+    runs-on: ubuntu-latest
+    needs:
+      - read-config
+      - build-dokka
+      - build-demo
+    if: >-
+      ${{
+        always() &&
+        needs.build-dokka.result == 'success' &&
+        (needs.build-demo.result == 'success' || needs.build-demo.result == 'skipped')
+      }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Dokka artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: dokka-html
+          path: ${{ runner.temp }}/dokka-html
+
+      - name: Download Wasm demo artifact
+        if: ${{ needs.read-config.outputs.demo-enabled == 'true' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: wasm-demos
+          path: ${{ runner.temp }}/wasm-demos
+
+      - name: Prepare GitHub Pages
+        shell: bash
+        env:
+          PAGES_PATH: ${{ runner.temp }}/github-pages
+          DOKKA_INPUT_PATH: ${{ runner.temp }}/dokka-html
+          DEMO_INPUT_PATH: ${{ runner.temp }}/wasm-demos
+          DEMO_ENABLED: ${{ needs.read-config.outputs.demo-enabled }}
+          PAGE_TITLE: ${{ needs.read-config.outputs.page-title }}
+          DEMO_APPS_JSON: ${{ needs.read-config.outputs.demo-apps-json }}
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test -f "$DOKKA_INPUT_PATH/index.html"
+          mkdir -p "$PAGES_PATH"
+
+          if [[ "$DEMO_ENABLED" == "true" ]]; then
+            PAGE_TITLE="$(ruby -rcgi -e 'print CGI.escapeHTML(ENV.fetch("PAGE_TITLE"))')"
+            REPOSITORY_URL="$(ruby -rcgi -e 'print CGI.escapeHTML(ENV.fetch("REPOSITORY_URL"))')"
+            APP_LINKS="$(ruby -rjson -rcgi -e '
+              JSON.parse(ENV.fetch("DEMO_APPS_JSON")).each do |app|
+                name = CGI.escapeHTML(app.fetch("name"))
+                description = CGI.escapeHTML(app.fetch("description"))
+                publish_path = CGI.escapeHTML(app.fetch("publish-path"))
+                puts <<~HTML
+                  <a class="menu-item" href="./#{publish_path}/">
+                    <span class="icon" aria-hidden="true">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="22" height="22" fill="currentColor">
+                        <path d="M480-80q-82 0-155-31.5t-127.5-86Q143-252 111.5-325T80-480q0-83 32.5-156t88-127Q256-817 330-848.5T488-880q80 0 151 27.5t124.5 76q53.5 48.5 85 115T880-518q0 115-70 176.5T640-280h-74q-9 0-12.5 5t-3.5 11q0 12 15 34.5t15 51.5q0 50-27.5 74T480-80Zm0-400Zm-177 23q17-17 17-43t-17-43q-17-17-43-17t-43 17q-17 17-17 43t17 43q17 17 43 17t43-17Zm120-160q17-17 17-43t-17-43q-17-17-43-17t-43 17q-17 17-17 43t17 43q17 17 43 17t43-17Zm200 0q17-17 17-43t-17-43q-17-17-43-17t-43 17q-17 17-17 43t17 43q17 17 43 17t43-17Zm120 160q17-17 17-43t-17-43q-17-17-43-17t-43 17q-17 17-17 43t17 43q17 17 43 17t43-17ZM480-160q9 0 14.5-5t5.5-13q0-14-15-33t-15-57q0-42 29-67t71-25h70q66 0 113-38.5T800-518q0-121-92.5-201.5T488-800q-136 0-232 93t-96 227q0 133 93.5 226.5T480-160Z"/>
+                      </svg>
+                    </span>
+                    <span class="item-content">
+                      <div class="item-title">#{name}</div>
+                      <div class="item-description">#{description}</div>
+                    </span>
+                    <span class="arrow" aria-hidden="true">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20" height="20" fill="currentColor">
+                        <path d="M504-480 348-636q-11-11-11-28t11-28q11-11 28-11t28 11l184 184q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L404-268q-11 11-28 11t-28-11q-11-11-11-28t11-28l156-156Z"/>
+                      </svg>
+                    </span>
+                  </a>
+                HTML
+              end
+            ')"
+            mkdir -p "$PAGES_PATH/api"
+            cp -a "$DOKKA_INPUT_PATH/." "$PAGES_PATH/api/"
+            ruby -rjson -rfileutils -e '
+              root = ENV.fetch("PAGES_PATH")
+              input = ENV.fetch("DEMO_INPUT_PATH")
+              JSON.parse(ENV.fetch("DEMO_APPS_JSON")).each do |app|
+                publish_path = app.fetch("publish-path")
+                source = File.join(input, publish_path)
+                abort "Demo artifact not found: #{source}" unless Dir.exist?(source)
+                abort "Demo index not found: #{source}/index.html" unless File.file?(File.join(source, "index.html"))
+
+                destination = File.join(root, publish_path)
+                FileUtils.mkdir_p(destination)
+                Dir.children(source).each do |entry|
+                  FileUtils.cp_r(File.join(source, entry), destination)
+                end
+              end
+            '
+            cat > "$PAGES_PATH/index.html" <<HTML
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta name="color-scheme" content="dark">
+            <title>${PAGE_TITLE}</title>
+
+            <style>
+              :root {
+                --bg: #202124;
+                --card: #0f1115;
+                --border: #303134;
+                --border-hover: #5f6368;
+                --text: #e8eaed;
+                --text-secondary: #9aa0a6;
+                --accent: #8ab4f8;
+              }
+
+              * {
+                box-sizing: border-box;
+              }
+
+              body {
+                margin: 0;
+                min-height: 100vh;
+
+                display: flex;
+                align-items: center;
+                justify-content: center;
+
+                padding: 24px;
+
+                background: var(--bg);
+                color: var(--text);
+                font-family:
+                  Inter,
+                  Roboto,
+                  "Segoe UI",
+                  Arial,
+                  sans-serif;
+              }
+
+              .card {
+                width: min(900px, 100%);
+
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 28px;
+
+                overflow: hidden;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, .35);
+              }
+
+              .content {
+                display: grid;
+                grid-template-columns: 1fr 420px;
+                gap: 56px;
+
+                padding: 48px;
+              }
+
+              .title {
+                margin: 0;
+
+                font-size: 3rem;
+                font-weight: 400;
+                line-height: 1.1;
+                letter-spacing: -.02em;
+              }
+
+              .subtitle {
+                display: inline-block;
+                margin-top: 20px;
+
+                color: var(--accent);
+                font-size: 1.1rem;
+              }
+
+              .menu {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+              }
+
+              .menu-item {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+
+                min-height: 88px;
+
+                padding: 16px 18px;
+
+                color: inherit;
+                text-decoration: none;
+
+                border: 1px solid var(--border);
+                border-radius: 16px;
+
+                background: rgba(255, 255, 255, .015);
+
+                transition:
+                  background-color .15s ease,
+                  border-color .15s ease,
+                  transform .15s ease,
+                  box-shadow .15s ease;
+              }
+
+              .menu-item:hover {
+                background: rgba(255, 255, 255, .04);
+                border-color: var(--border-hover);
+
+                transform: translateY(-1px);
+
+                box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
+              }
+
+              .icon {
+                width: 42px;
+                height: 42px;
+
+                display: flex;
+                align-items: center;
+                justify-content: center;
+
+                flex-shrink: 0;
+
+                border-radius: 12px;
+
+                background: #1b2330;
+                color: var(--accent);
+              }
+
+              .icon svg,
+              .arrow svg {
+                display: block;
+              }
+
+              .item-content {
+                flex: 1;
+                min-width: 0;
+              }
+
+              .item-title {
+                font-size: 1rem;
+                font-weight: 500;
+                color: var(--text);
+              }
+
+              .item-description {
+                margin-top: 4px;
+
+                font-size: .875rem;
+                color: var(--text-secondary);
+              }
+
+              .arrow {
+                flex-shrink: 0;
+                color: var(--text-secondary);
+              }
+
+              @media (max-width: 900px) {
+                .content {
+                  grid-template-columns: 1fr;
+                  gap: 32px;
+                  padding: 32px;
+                }
+
+                .title {
+                  font-size: 2.25rem;
+                }
+              }
+
+              @media (max-width: 480px) {
+                body {
+                  padding: 12px;
+                }
+
+                .content {
+                  padding: 20px;
+                  gap: 24px;
+                }
+
+                .menu-item {
+                  padding: 14px 16px;
+                }
+
+                .title {
+                  font-size: 1.9rem;
+                }
+
+                .subtitle {
+                  margin-top: 12px;
+                }
+              }
+            </style>
+          </head>
+
+          <body>
+            <main class="card">
+              <div class="content">
+
+                <section>
+                  <h1 class="title">${PAGE_TITLE}</h1>
+                  <a class="subtitle" href="${REPOSITORY_URL}" target="_blank" rel="noopener noreferrer">GitHub repository</a>
+                </section>
+
+                <nav class="menu" aria-label="Project resources">
+
+                  <a class="menu-item" href="./api/">
+                    <span class="icon" aria-hidden="true">
+                      <svg xmlns="http://www.w3.org/2000/svg"
+                           viewBox="0 -960 960 960"
+                           width="22"
+                           height="22"
+                           fill="currentColor">
+                        <path d="M260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-66.5 93.5Q441-188 430-194q-39-23-82-34.5T260-240q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-45 0-88 11.5T530-194q-11 6-23.5 9.5T480-181q-14 0-26.5-3.5ZM280-494Zm280-115q0-9 6.5-18.5T581-640q29-10 58-15t61-5q20 0 39.5 2.5T778-651q9 2 15.5 10t6.5 18q0 17-11 25t-28 4q-14-3-29.5-4.5T700-600q-26 0-51 5t-48 13q-18 7-29.5-1T560-609Zm0 220q0-9 6.5-18.5T581-420q29-10 58-15t61-5q20 0 39.5 2.5T778-431q9 2 15.5 10t6.5 18q0 17-11 25t-28 4q-14-3-29.5-4.5T700-380q-26 0-51 4.5T601-363q-18 7-29.5-.5T560-389Zm0-110q0-9 6.5-18.5T581-530q29-10 58-15t61-5q20 0 39.5 2.5T778-541q9 2 15.5 10t6.5 18q0 17-11 25t-28 4q-14-3-29.5-4.5T700-490q-26 0-51 5t-48 13q-18 7-29.5-1T560-499Z"/>
+                      </svg>
+                    </span>
+
+                    <span class="item-content">
+                      <div class="item-title">API Documentation</div>
+                      <div class="item-description">
+                        Browse the generated Dokka reference
+                      </div>
+                    </span>
+
+                    <span class="arrow" aria-hidden="true">
+                      <svg xmlns="http://www.w3.org/2000/svg"
+                           viewBox="0 -960 960 960"
+                           width="20"
+                           height="20"
+                           fill="currentColor">
+                        <path d="M504-480 348-636q-11-11-11-28t11-28q11-11 28-11t28 11l184 184q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L404-268q-11 11-28 11t-28-11q-11-11-11-28t11-28l156-156Z"/>
+                      </svg>
+                    </span>
+                  </a>
+
+                  ${APP_LINKS}
+
+                </nav>
+              </div>
+            </main>
+          </body>
+          </html>
+          HTML
+          else
+            cp -a "$DOKKA_INPUT_PATH/." "$PAGES_PATH/"
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/github-pages
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

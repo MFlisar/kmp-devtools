@@ -1,0 +1,160 @@
+# -----------------------
+# Update release notes on tag
+# - runs the kmp-devtools release workflow
+# - adds a case-insensitively sorted list of commit messages
+# -----------------------
+
+name: Update Tag Release Notes
+run-name: "[${{ github.event_name }}] ${{ github.ref_name }} - Update Tag Release Notes"
+
+on:
+  push:
+    tags:
+      - '*'
+
+env:
+  RELEASE_TAG: ${{ github.ref_name }}
+  CHECKOUT_FETCH_DEPTH: "0"
+  FILTER_OUT_DUPLICATE_COMMITS: "true"
+  EXCLUDE_PRE_RELEASES: "false" # ignore pre-release tags when selecting the previous release
+  COMMITS_HEADING: "## Changes in this release"
+  SKIP_EMPTY_RELEASE_NOTES: "false" # leave release notes untouched when no messages remain
+  RELEASE_TAG_REGEX: '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+  STABLE_RELEASE_TAG_REGEX: '^v?[0-9]+\.[0-9]+\.[0-9]+(\+[0-9A-Za-z.-]+)?$'
+  # Each non-empty line is a Python regular expression matched against a commit subject.
+  COMMIT_MESSAGE_EXCLUDE_REGEX: |
+    ^Merge branch
+    ^[. ]+$
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+
+  update-release-notes:
+    name: Add commit list to release notes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ env.CHECKOUT_FETCH_DEPTH }}
+
+      - name: Append sorted commit list
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "$EXCLUDE_PRE_RELEASES" in
+            true|false) ;;
+            *)
+              echo "EXCLUDE_PRE_RELEASES must be 'true' or 'false'." >&2
+              exit 1
+              ;;
+          esac
+
+          notes_file="$RUNNER_TEMP/release-notes.md"
+          commits_file="$RUNNER_TEMP/release-commits.txt"
+          filtered_commits_file="$RUNNER_TEMP/filtered-release-commits.txt"
+          updated_notes_file="$RUNNER_TEMP/updated-release-notes.md"
+          start_marker="<!-- release-commits:start -->"
+          end_marker="<!-- release-commits:end -->"
+
+          case "$FILTER_OUT_DUPLICATE_COMMITS" in
+            true|false) ;;
+            *)
+              echo "FILTER_OUT_DUPLICATE_COMMITS must be 'true' or 'false'." >&2
+              exit 1
+              ;;
+          esac
+          case "$SKIP_EMPTY_RELEASE_NOTES" in
+            true|false) ;;
+            *)
+              echo "SKIP_EMPTY_RELEASE_NOTES must be 'true' or 'false'." >&2
+              exit 1
+              ;;
+          esac
+
+          previous_release_tag=""
+          if git rev-parse --verify "${RELEASE_TAG}^" >/dev/null 2>&1; then
+            previous_release_tag="$(
+              git tag --merged "${RELEASE_TAG}^" --sort=-version:refname |
+                python3 -c 'import os, re, sys; key = "STABLE_RELEASE_TAG_REGEX" if os.environ["EXCLUDE_PRE_RELEASES"] == "true" else "RELEASE_TAG_REGEX"; pattern = re.compile(os.environ[key]); tags = sys.stdin.read().splitlines(); print(next((tag for tag in tags if pattern.fullmatch(tag)), ""))'
+            )"
+          fi
+
+          if [[ -n "$previous_release_tag" ]]; then
+            git log --format=%s "$previous_release_tag..$RELEASE_TAG" > "$commits_file"
+          else
+            git log --format=%s "$RELEASE_TAG" > "$commits_file"
+          fi
+
+          python3 - "$commits_file" "$filtered_commits_file" <<'PY'
+          import os
+          import pathlib
+          import re
+          import sys
+
+          source_path, output_path = sys.argv[1:]
+          exclusions = [
+              re.compile(pattern.strip())
+              for pattern in os.environ["COMMIT_MESSAGE_EXCLUDE_REGEX"].splitlines()
+              if pattern.strip()
+          ]
+          messages = []
+          for message in pathlib.Path(source_path).read_text().splitlines():
+              message = message.strip()
+              if message and not any(pattern.search(message) for pattern in exclusions):
+                  messages.append(message)
+
+          filter_duplicates = os.environ["FILTER_OUT_DUPLICATE_COMMITS"].strip().lower()
+          messages.sort(key=str.casefold)
+          if filter_duplicates == "true":
+              unique_commits = []
+              seen = set()
+              for message in messages:
+                  normalized = message.casefold()
+                  if normalized not in seen:
+                      seen.add(normalized)
+                      unique_commits.append(message)
+              messages = unique_commits
+          pathlib.Path(output_path).write_text("".join(f"{message}\n" for message in messages))
+          PY
+
+          if [[ "$SKIP_EMPTY_RELEASE_NOTES" == "true" && ! -s "$filtered_commits_file" ]]; then
+            echo "No commit messages remain after filtering; leaving release notes unchanged."
+            exit 0
+          fi
+
+          gh release view "$RELEASE_TAG" --json body --jq .body > "$notes_file"
+
+          python3 - "$notes_file" "$filtered_commits_file" "$updated_notes_file" "$COMMITS_HEADING" "$start_marker" "$end_marker" <<'PY'
+          import pathlib
+          import sys
+
+          notes_path, commits_path, output_path, heading, start_marker, end_marker = sys.argv[1:]
+          notes = pathlib.Path(notes_path).read_text()
+          commits = pathlib.Path(commits_path).read_text().splitlines()
+
+          start = notes.find(start_marker)
+          if start >= 0:
+              end = notes.find(end_marker, start)
+              if end < 0:
+                  raise SystemExit("Existing generated commit section has no end marker.")
+              notes = notes[:start] + notes[end + len(end_marker):]
+
+          if commits:
+              if notes.strip():
+                  notes = notes.rstrip() + "\n\n"
+              notes += f"{start_marker}\n{heading}\n"
+              notes += "".join(f"* {message}\n" for message in commits)
+              notes += end_marker + "\n"
+
+          pathlib.Path(output_path).write_text(notes)
+          PY
+
+          gh release edit "$RELEASE_TAG" --notes-file "$updated_notes_file"

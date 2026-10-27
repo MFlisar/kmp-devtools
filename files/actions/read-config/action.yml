@@ -1,0 +1,49 @@
+name: Read project config
+description: Parse the project config and expose all workflow configuration values
+inputs:
+  config-file:
+    description: Path to the project configuration file
+    required: false
+    default: .config.yml
+outputs:
+  publish-enabled:
+    description: Whether publishing is enabled
+    value: ${{ steps.parse.outputs.publish-enabled }}
+  publish-target:
+    description: Selected publishing target
+    value: ${{ steps.parse.outputs.publish-target }}
+  maven-central-enabled:
+    description: Whether Maven Central publishing is enabled
+    value: ${{ steps.parse.outputs.maven-central-enabled }}
+  github-enabled:
+    description: Whether GitHub repository publishing is enabled
+    value: ${{ steps.parse.outputs.github-enabled }}
+  java-version:
+    description: Configured Java version
+    value: ${{ steps.parse.outputs.java-version }}
+  target-repository:
+    description: GitHub Maven repository in owner/repository form
+    value: ${{ steps.parse.outputs.target-repository }}
+  target-branch:
+    description: Target Maven repository branch
+    value: ${{ steps.parse.outputs.target-branch }}
+  target-path:
+    description: Path in the target Maven repository
+    value: ${{ steps.parse.outputs.target-path }}
+  page-title:
+    description: Project title for the GitHub Pages landing page
+    value: ${{ steps.parse.outputs.page-title }}
+  demo-enabled:
+    description: Whether a demo is configured for publishing
+    value: ${{ steps.parse.outputs.demo-enabled }}
+  demo-apps-json:
+    description: JSON array of published demo app metadata, Gradle tasks, and output paths
+    value: ${{ steps.parse.outputs.demo-apps-json }}
+runs:
+  using: composite
+  steps:
+    - id: parse
+      shell: bash
+      env:
+        CONFIG_FILE: ${{ inputs.config-file }}
+      run: ruby "${{ github.action_path }}/read-config.rb"

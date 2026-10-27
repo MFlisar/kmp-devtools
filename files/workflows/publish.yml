@@ -1,0 +1,237 @@
+# -----------------------
+# Publish Maven artifacts to the selected repository
+# - runs when a GitHub release is published
+# - publishes to the single destination selected by publish.target in .config.yml
+# - selects macos-latest when iOS/macOS targets are configured, otherwise ubuntu-latest
+# - Maven Central requires GPG_KEY, GPG_PASSWORD, MAVEN_CENTRAL_USERNAME and
+#   MAVEN_CENTRAL_PASSWORD; GitHub publishing requires TARGET_REPOSITORY_TOKEN
+# -----------------------
+
+name: Publish
+run-name: "${{ github.event_name }} - ${{ github.ref_name }}"
+
+on:
+  release:
+    types: [published]
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name }} # tag of the published release
+  JAVA_DISTRIBUTION: "temurin"
+
+permissions:
+  contents: read
+
+jobs:
+  check-publishing:
+    name: Check publish configuration
+    runs-on: ubuntu-latest
+    outputs:
+      publish-enabled: ${{ steps.read-config.outputs.publish-enabled }}
+      publish-target: ${{ steps.read-config.outputs.publish-target }}
+      maven-central-enabled: ${{ steps.read-config.outputs.maven-central-enabled }}
+      github-enabled: ${{ steps.read-config.outputs.github-enabled }}
+      java-version: ${{ steps.read-config.outputs.java-version }}
+      publish-runner: ${{ steps.detect-runner.outputs.publish-runner }}
+      target-repository: ${{ steps.read-config.outputs.target-repository }}
+      target-branch: ${{ steps.read-config.outputs.target-branch }}
+      target-path: ${{ steps.read-config.outputs.target-path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Read publishing settings from .config.yml
+        id: read-config
+        uses: ./.github/actions/read-config
+
+      - name: Validate publishing credentials
+        if: ${{ steps.read-config.outputs.github-enabled == 'true' }}
+        env:
+          TARGET_REPOSITORY_TOKEN: ${{ secrets.TARGET_REPOSITORY_TOKEN }}
+          PUBLISH_ENABLED: ${{ steps.read-config.outputs.publish-enabled }}
+          PUBLISH_TARGET: ${{ steps.read-config.outputs.publish-target }}
+          MAVEN_CENTRAL_ENABLED: ${{ steps.read-config.outputs.maven-central-enabled }}
+          GITHUB_ENABLED: ${{ steps.read-config.outputs.github-enabled }}
+          JAVA_VERSION: ${{ steps.read-config.outputs.java-version }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$TARGET_REPOSITORY_TOKEN" ]]; then
+            echo "::error::TARGET_REPOSITORY_TOKEN is required when GitHub publishing is enabled."
+            exit 1
+          fi
+
+          echo "Publishing enabled: $PUBLISH_ENABLED"
+          echo "Publish target: $PUBLISH_TARGET"
+          echo "Maven Central publishing enabled: $MAVEN_CENTRAL_ENABLED"
+          echo "GitHub publishing enabled: $GITHUB_ENABLED"
+          echo "Java version: $JAVA_VERSION"
+
+      - name: Set up Java
+        if: ${{ steps.read-config.outputs.publish-enabled == 'true' }}
+        uses: actions/setup-java@v6
+        with:
+          java-version: ${{ steps.read-config.outputs.java-version }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        if: ${{ steps.read-config.outputs.publish-enabled == 'true' }}
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Detect required publish runner
+        id: detect-runner
+        if: ${{ steps.read-config.outputs.publish-enabled == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          tasks="$(CI=true ./gradlew -q tasks --all)"
+          runner=ubuntu-latest
+          if grep -Eiq '(^|:)compileKotlin(ios|macos)[[:alnum:]]*[[:space:]]+-' <<< "$tasks"; then
+            runner=macos-latest
+          fi
+          echo "publish-runner=$runner" >> "$GITHUB_OUTPUT"
+          echo "Publish runner: $runner"
+
+  publish-library:
+    name: Build and publish artifacts
+    needs: check-publishing
+    if: ${{ needs.check-publishing.outputs.publish-enabled == 'true' }}
+    runs-on: ${{ needs.check-publishing.outputs.publish-runner }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          java-version: ${{ needs.check-publishing.outputs.java-version }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build and publish selected destination
+        run: |
+          set -euo pipefail
+          publish_tasks=()
+          case "$PUBLISH_TARGET" in
+            maven-central)
+              publish_tasks+=(publish)
+              ;;
+            github)
+              publish_tasks+=(publishAllPublicationsToGitHubRepository)
+              ;;
+            *)
+              echo "::error::Unsupported publish target: $PUBLISH_TARGET"
+              exit 1
+              ;;
+          esac
+
+          echo "Release tag: $RELEASE_TAG"
+          echo "Gradle publishing tasks: ${publish_tasks[*]}"
+          CI=true ./gradlew "${publish_tasks[@]}" --no-daemon --parallel
+        env:
+          PUBLISH_TARGET: ${{ needs.check-publishing.outputs.publish-target }}
+          VERSION: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.event.release.tag_name }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSWORD }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+
+      - name: Collect Maven artifacts
+        if: ${{ needs.check-publishing.outputs.github-enabled == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_directory="$RUNNER_TEMP/maven-artifacts"
+          mkdir -p "$artifact_directory"
+
+          while IFS= read -r -d '' repository; do
+            echo "Collecting artifacts from $repository"
+            rsync -a "$repository/" "$artifact_directory/"
+          done < <(find . -type d -name maven-repo -not -path './.git/*' -print0)
+
+          if ! find "$artifact_directory" -type f -name '*.pom' -print -quit | grep -q .; then
+            echo "::error::No Maven POM files were generated."
+            exit 1
+          fi
+
+      - name: Checkout target repository
+        if: ${{ needs.check-publishing.outputs.github-enabled == 'true' }}
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ needs.check-publishing.outputs.target-repository }}
+          ref: ${{ needs.check-publishing.outputs.target-branch }}
+          token: ${{ secrets.TARGET_REPOSITORY_TOKEN }}
+          path: target-repository
+          fetch-depth: 0
+
+      - name: Copy artifacts to target repository
+        if: ${{ needs.check-publishing.outputs.github-enabled == 'true' }}
+        shell: bash
+        env:
+          TARGET_REPOSITORY_PATH: ${{ needs.check-publishing.outputs.target-path }}
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          target_directory="$GITHUB_WORKSPACE/target-repository"
+          if [[ -n "$TARGET_REPOSITORY_PATH" ]]; then
+            target_directory="$target_directory/$TARGET_REPOSITORY_PATH"
+          fi
+          mkdir -p "$target_directory"
+          export target_directory
+
+          python3 - <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+
+          artifacts = Path(os.environ["RUNNER_TEMP"]) / "maven-artifacts"
+          target = Path(os.environ["target_directory"])
+          existing = [
+              str(pom.relative_to(artifacts))
+              for pom in artifacts.rglob("*.pom")
+              if (target / pom.relative_to(artifacts)).exists()
+          ]
+          if existing:
+              print(
+                  "::error::This version already exists in the target Maven repository: "
+                  + ", ".join(existing)
+              )
+              sys.exit(1)
+          PY
+
+          # Preserve existing repository metadata while adding new versioned artifacts.
+          rsync -a --ignore-existing "$RUNNER_TEMP/maven-artifacts/" "$target_directory/"
+
+      - name: Commit and push artifacts
+        if: ${{ needs.check-publishing.outputs.github-enabled == 'true' }}
+        working-directory: target-repository
+        env:
+          TARGET_REPOSITORY_PATH: ${{ needs.check-publishing.outputs.target-path }}
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+          TARGET_BRANCH: ${{ needs.check-publishing.outputs.target-branch }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [[ -n "$TARGET_REPOSITORY_PATH" ]]; then
+            git add -A -- "$TARGET_REPOSITORY_PATH"
+          else
+            git add -A
+          fi
+
+          if git diff --cached --quiet; then
+            echo "No new artifact files to commit."
+            exit 0
+          fi
+
+          git commit -m "Publish $RELEASE_VERSION"
+          git push origin "$TARGET_BRANCH"
