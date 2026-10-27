@@ -17,7 +17,6 @@ class AppModuleConfig internal constructor(
 
     companion object {
 
-
         fun readManual(project: Project): AppModuleConfig {
             val config = Config.read(project.rootDir)
             val relativeProjectPath = project.relativeInvariantProjectPath()

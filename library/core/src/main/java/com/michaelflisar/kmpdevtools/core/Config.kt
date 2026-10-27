@@ -37,11 +37,13 @@ data class Config(
         return requireApp(relativePath)
     }
 
-    fun requireApp(relativeInvariantProjectPath: String): App {
-        val app = apps.find { it.invariantPath == relativeInvariantProjectPath }
-        return app ?: error("Missing required 'app' section in $FILE_NAME - path: $relativeInvariantProjectPath")
+    fun requireApp(relativePath: String): App {
+        val app = apps.find {
+            val validPaths = it.invariantTargetPaths
+            validPaths.contains(relativePath)
+        }
+        return app ?: error("Missing required 'app' section in $FILE_NAME - path: $relativePath")
     }
-
 
     fun getModuleForProject(rootDir: File, projectDir: File): Modules.Module {
         val path = projectDir.relativeTo(rootDir).invariantSeparatorsPath
@@ -118,14 +120,26 @@ data class Config(
     data class App(
         val name: String,
         val namespace: String,
+        @SerialName("main-path") private val mainPath: String,
         @SerialName("version-name") val versionName: String,
-        private val path: String,
-        @SerialName("publish-app") val publish: Boolean,
-        @SerialName("publish-path") val publishPath: String,
-        @SerialName("publish-description") val publishDescription: String,
+        @SerialName("target-paths") private val targetPaths: List<String>,
+        val publish: Publish? = null,
     ) {
-        val invariantPath: String
-            get() = path.invariantPath()
+        val invariantMainPath: String
+            get() = mainPath.invariantPath()
+
+        val invariantTargetPaths : List<String>
+            get() = targetPaths.map { it.invariantPath() }
+
+        @Serializable
+        data class Publish(
+            val path: String,
+            val description: String,
+            @SerialName("target-path") private val targetPath: String,
+        ) {
+            val invariantTargetPath: String
+                get() = targetPath.invariantPath()
+        }
     }
 
     @Serializable

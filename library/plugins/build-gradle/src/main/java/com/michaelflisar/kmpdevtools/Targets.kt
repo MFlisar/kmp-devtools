@@ -1,17 +1,12 @@
 package com.michaelflisar.kmpdevtools
 
-import com.android.build.api.dsl.ApplicationExtension
-import com.android.build.api.dsl.BuildFeatures
-import com.android.build.api.dsl.DefaultConfig
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
-import com.michaelflisar.kmpdevtools.configs.AndroidAppConfig
-import com.michaelflisar.kmpdevtools.configs.WasmAppConfig
 import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
-import com.michaelflisar.kmpdevtools.core.Platform
-import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
-import org.gradle.api.JavaVersion
+import com.michaelflisar.kmpdevtools.configs.WasmAppConfig
+import com.michaelflisar.kmpdevtools.core.Config
+import com.michaelflisar.kmpdevtools.core.Platform
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -27,26 +22,9 @@ import org.jetbrains.kotlin.konan.target.KonanTarget
 import java.io.File
 
 class Targets(
-    val android: Boolean = false,
-    val iOS: Boolean = false,
-    val windows: Boolean = false,
-    val linux: Boolean = false,
-    val macOS: Boolean = false,
-    val wasm: Boolean = false,
-    val js: Boolean = false,
+    vararg platforms: Platform
 ) {
-    val platforms = Platform.entries
-        .filter {
-            when (it) {
-                Platform.ANDROID -> android
-                Platform.IOS -> iOS
-                Platform.WINDOWS -> windows
-                Platform.MACOS -> macOS
-                Platform.LINUX -> linux
-                Platform.WASM -> wasm
-                Platform.JS -> js
-            }
-        }
+    val platforms = platforms.toList()
 
     fun isEnabled(target: Platform) = platforms.contains(target)
 
@@ -124,7 +102,7 @@ class Targets(
         configureWASM: (KotlinWasmJsTargetDsl.() -> Unit) = {},
         configureJS: (KotlinJsTargetDsl.() -> Unit) = {},
     ) {
-        if (wasmAppConfig == null && wasm) {
+        if (wasmAppConfig == null && platforms.contains(Platform.WASM)) {
             throw IllegalArgumentException("wasmConfig must be provided when Wasm target is enabled")
         }
         val project = appModuleConfig.project
@@ -154,7 +132,7 @@ class Targets(
         androidConfig: AndroidLibraryConfig,
         configure: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit) = {},
     ) {
-        if (android) {
+        if (platforms.contains(Platform.ANDROID)) {
 
             project.extensions.configure(KotlinMultiplatformExtension::class.java) {
 
@@ -264,7 +242,7 @@ class Targets(
         configureTests: (KotlinNativeTargetWithSimulatorTests.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (iOS) {
+            if (platforms.contains(Platform.IOS)) {
                 // iosX64 target removed because Compose Multiplatform 1.11.0 no longer supports Apple x86_64 targets
                 //iosX64 {
                 //    configure()
@@ -297,7 +275,7 @@ class Targets(
         }
 
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (iOS) {
+            if (platforms.contains(Platform.IOS)) {
                 listOf(
                     iosX64(),
                     iosArm64(),
@@ -344,7 +322,7 @@ class Targets(
         configure: (KotlinJvmTarget.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (windows) {
+            if (platforms.contains(Platform.WINDOWS)) {
                 jvm {
                     configure()
                 }
@@ -363,7 +341,7 @@ class Targets(
         configure: (KotlinNativeTargetWithHostTests.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (macOS) {
+            if (platforms.contains(Platform.MACOS)) {
                 macosArm64 {
                     configure()
                 }
@@ -382,7 +360,7 @@ class Targets(
         configure: (KotlinNativeTarget.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (linux) {
+            if (platforms.contains(Platform.LINUX)) {
                 linuxX64 {
                     configure()
                 }
@@ -406,7 +384,7 @@ class Targets(
         configure: (KotlinWasmJsTargetDsl.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (wasm) {
+            if (platforms.contains(Platform.WASM)) {
                 @OptIn(ExperimentalWasmDsl::class)
                 wasmJs {
                     outputModuleName.set(wasmConfig.moduleName)
@@ -437,7 +415,7 @@ class Targets(
         configure: (KotlinWasmJsTargetDsl.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (wasm) {
+            if (platforms.contains(Platform.WASM)) {
                 @OptIn(ExperimentalWasmDsl::class)
                 wasmJs {
                     nodejs()
@@ -458,7 +436,7 @@ class Targets(
         configure: (KotlinJsTargetDsl.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (js) {
+            if (platforms.contains(Platform.JS)) {
                 js {
                     configure()
                 }

@@ -202,15 +202,16 @@ object UpdateReadmeUtil {
         ).joinToString("\n")
 
         val interactiveWasmDemoButton = config.apps
-            .filter { it.publish }
+            .mapNotNull { app -> app.publish?.let { publish -> app to publish } }
             .takeIf { it.isNotEmpty() }
             ?.joinToString(
                 separator = "\n\n",
                 prefix = "> [!TIP]\n> Try the interactive demo:\n",
                 postfix = "\n"
             ) {
-                val link = "https://mflisar.github.io/${config.project.repoName}/${it.publishPath}/"
-                "\n> ${ReadmeDefaults.imageInteractiveDemo(label = it.name, url = link)}"
+                val (app, publish) = it
+                val link = "https://mflisar.github.io/${config.project.repoName}/${publish.path}/"
+                "\n> ${ReadmeDefaults.imageInteractiveDemo(label = app.name, url = link)}"
             }
             .orEmpty()
 
@@ -421,12 +422,12 @@ object UpdateReadmeUtil {
         val demos = buildString {
             if (config.apps.size == 1) {
                 val demo = config.apps[0]
-                appendLine("A full [demo project](${demo.invariantPath}) is included.")
+                appendLine("A full [demo project](${demo.invariantMainPath}) is included.")
             } else if (config.apps.size > 1) {
                 appendLine("Following full demo projects are included:")
                 appendLine()
                 config.apps.forEach {
-                    appendLine("- [${it.name}](${it.invariantPath})")
+                    appendLine("- [${it.name}](${it.invariantMainPath})")
                 }
             }
         }
@@ -618,45 +619,26 @@ object UpdateReadmeUtil {
      *
      * content may look like this:
      * val buildTargets = Targets(
-     *     // mobile
-     *     android = true,
-     *     iOS = true,
-     *     // desktop
-     *     windows = true,
-     *     macOS = true,
-     *     // web
-     *     wasm = true
+     *     Platform.WINDOWS
      * )
-     *
      *
      * @param file The root directory of the module.
      * @return A list of supported platform names.
      */
     private fun getSupportedPlatformsFromModule(file: File): List<String> {
 
-        // 1) get buildTargets block
-        val regex = Regex("val buildTargets = Targets\\((.*?)\\)", RegexOption.DOT_MATCHES_ALL)
-        val matchResult = regex.find(file.readText())
+        val content = file.readText()
+        val targetsStart = content.indexOf("Targets(")
+        if (targetsStart == -1) return emptyList()
 
-        // 2) extract platforms
-        val platforms = mutableListOf<String>()
-        matchResult?.groups?.get(1)?.value
-            ?.lines()
-            ?.filter { !it.trim().startsWith("//") && it.contains("=") }
-            ?.forEach {
-                val parts = it.trim()
-                    .removeSuffix(",")
-                    .split("=")
-                if (parts.size == 2) {
-                    val platformName = parts[0].trim()
-                    val isEnabled = parts[1].trim().toBoolean()
-                    if (isEnabled) {
-                        platforms.add(platformName)
-                    }
-                }
-            }
+        val targetsEnd = content.indexOf(")", targetsStart + "Targets(".length)
+        if (targetsEnd == -1) return emptyList()
 
-        return platforms
+        val targetsContent = content.substring(targetsStart + "Targets(".length, targetsEnd)
+        return Regex("""Platform\.([A-Za-z_][A-Za-z0-9_]*)""")
+            .findAll(targetsContent)
+            .map { it.groupValues[1].lowercase() }
+            .toList()
     }
 
     private fun buildMarkdownLinks(folders: List<FolderLink>): List<String> {

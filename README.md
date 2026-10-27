@@ -28,7 +28,7 @@ Die Datei enthält die projektweiten Angaben für Publishing, Module und die Dok
 | `publish` | `group-id`, Publishing-Ziel (`none`, `maven-central` oder `github`) und bei GitHub die Angaben `user`, `repo`, `branch` und `path`. |
 | `config` | `java-version` sowie `developer` mit Name, E-Mail, Maven-ID und GitHub-Benutzername. |
 | `project` | Projekt-Namespace, Repository-Name, Veröffentlichungsjahr (`release`) und Lizenz mit Name und Repository-Pfad. |
-| `apps` | Liste der Apps mit `name`, `namespace`, `version-name` und `path`. `publish-app` steuert den interaktiven Demo-Button im README, dessen URL-Pfad aus `publish-path` gebildet wird. Der README-Abschnitt „Demo“ listet alle Apps anhand von `path` auf. `publish-description` wird vom README-Generator derzeit nicht verwendet. |
+| `apps` | Liste der Apps mit `name`, `namespace`, `version-name`, `main-path` und `target-paths`. Der optionale Abschnitt `publish` mit `path`, `description` und `target-path` aktiviert die Veröffentlichung der App als Demo; GitHub Pages unterstützt derzeit `target-path`-Werte, die mit `web` enden. Der README-Abschnitt „Demo“ verlinkt auf `main-path`. |
 | `modules` | `primary-artifact-id`, eine Modulliste mit Artifact-ID, Beschreibung und Pfad sowie eine XCFramework-Liste mit Name, Pfad und Targets. |
 | `documentation` | Dokumentationsordner, Ordner für Partials und Screenshots sowie optional der Pfad zum Haupt-Screenshot. |
 | `settings` | Optionale Einstellungen; `log-dependencies` ist standardmäßig `false`. |
