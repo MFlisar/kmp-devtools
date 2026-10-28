@@ -5,22 +5,24 @@
 # -----------------------
 
 name: Update Markdown Docs
-run-name: "[${{ github.event_name }}] Update Markdown Docs"
 
 on:
-  push:
-    branches: [ main, master ]
+  workflow_call:
+    inputs:
+      config-file:
+        description: Path to the config file, relative to the consumer repository root
+        required: false
+        type: string
+        default: .config.yml
 
+# Fixed workflow settings, not caller inputs.
 env:
   CHECKOUT_FETCH_DEPTH: "0"
-  JAVA_VERSION: "17"
   JAVA_DISTRIBUTION: "temurin"
   UPDATE_DOCS_GRADLE_TASK: "updateMarkdownFiles"
   DOTNET_VERSION: "8.0.x"
   LYCHEE_ARGS: >-
     --root-dir "${{ github.workspace }}" --verbose --no-progress
-    --exclude '(?i)^https://${{ github.repository_owner }}\.github\.io/${{ github.event.repository.name }}/?$'
-    --exclude '(?i)^https://${{ github.repository_owner }}\.github\.io/${{ github.event.repository.name }}/demo/?$'
     './**/*.md' './**/*.html'
 
 permissions:
@@ -34,10 +36,16 @@ jobs:
         with:
           fetch-depth: ${{ env.CHECKOUT_FETCH_DEPTH }}
 
+      - name: Read documentation settings
+        id: read-config
+        uses: MFlisar/kmp-devtools/.github/actions/read-config@main
+        with:
+          config-file: ${{ inputs.config-file }}
+
       - uses: actions/setup-java@v6
         with:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: ${{ steps.read-config.outputs.java-version }}
 
       - name: Grant Permission to Execute Gradle
         run: chmod +x gradlew
@@ -57,12 +65,33 @@ jobs:
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
           mdsnippets --convention InPlaceOverwrite --omit-snippet-links true
 
+      - name: Prepare Lychee URL filters
+        id: lychee-args
+        shell: bash
+        env:
+          PUBLISH_URL_PATHS_JSON: ${{ steps.read-config.outputs.publish-url-paths-json }}
+        run: |
+          set -euo pipefail
+          ruby -rjson -e '
+            owner, repository = ENV.fetch("GITHUB_REPOSITORY").split("/", 2)
+            base_url = "https://#{owner}.github.io/#{repository}"
+            paths = [""] + JSON.parse(ENV.fetch("PUBLISH_URL_PATHS_JSON"))
+            excludes = paths.map do |path|
+              url = path.empty? ? base_url : "#{base_url}/#{path}"
+              pattern = "(?i)^#{Regexp.escape(url)}/?(?:[?#].*)?$"
+              "--exclude \u0027#{pattern}\u0027"
+            end
+            File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |output|
+              output.puts("args=#{ENV.fetch("LYCHEE_ARGS")} #{excludes.join(" ")}")
+            end
+          '
+
       - name: Check links with Lychee
         uses: lycheeverse/lychee-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: ${{ env.LYCHEE_ARGS }}
+          args: ${{ steps.lychee-args.outputs.args }}
 
       - name: Remove lychee folder
         run: rm -rf lychee

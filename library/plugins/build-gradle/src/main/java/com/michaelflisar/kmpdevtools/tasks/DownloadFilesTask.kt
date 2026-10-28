@@ -32,16 +32,6 @@ class DownloadFilesTask(
 
         val filesToDownloadNew = listOf<Download>(
             Download.Folder(
-                name = ".github/workflows",
-                sourceFolderPath = "files/workflows",
-                targetFolderPath = ".github/workflows",
-            ),
-            Download.Folder(
-                name = ".github/actions",
-                sourceFolderPath = "files/actions",
-                targetFolderPath = ".github/actions",
-            ),
-            Download.Folder(
                 name = ".github/instructions",
                 sourceFolderPath = "files/instructions",
                 targetFolderPath = ".github/instructions",

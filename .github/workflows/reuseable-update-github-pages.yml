@@ -1,19 +1,24 @@
 # -----------------------
 # Update GitHub Pages
 # - builds Dokka and optionally one or more Wasm demos
-# - reads Java, project, and demo settings from .config.yml
+# - reads Java, project, and demo settings from config-file (default: .config.yml)
 # - demos enabled: landing page, Dokka at /api/, demos at configured paths
 # - demo disabled: Dokka directly at the site root
 # - deploys the artifact to GitHub Pages
 # -----------------------
 
 name: Update GitHub Pages
-run-name: "[${{ github.event_name }}] Update GitHub Pages"
 
 on:
-  push:
-    branches: [ main, master ]
+  workflow_call:
+    inputs:
+      config-file:
+        description: Path to the config file, relative to the consumer repository root
+        required: false
+        type: string
+        default: .config.yml
 
+# Fixed workflow settings, not caller inputs.
 env:
   DOKKA_GRADLE_TASK: ":dokka:dokkaGenerate"             # required
   DOKKA_HTML_PATH: "library/dokka/build/dokka/html"     # required
@@ -33,9 +38,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Read settings from .config.yml
+      - name: Read GitHub Pages settings
         id: read-config
-        uses: ./.github/actions/read-config
+        uses: MFlisar/kmp-devtools/.github/actions/read-config@main
+        with:
+          config-file: ${{ inputs.config-file }}
 
   build-dokka:
     name: Build Dokka

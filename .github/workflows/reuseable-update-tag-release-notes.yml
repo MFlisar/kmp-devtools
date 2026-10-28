@@ -5,15 +5,19 @@
 # -----------------------
 
 name: Update Tag Release Notes
-run-name: "[${{ github.event_name }}] ${{ github.ref_name }} - Update Tag Release Notes"
 
 on:
-  push:
-    tags:
-      - '*'
+  workflow_call:
+    inputs:
+      config-file:
+        description: Path to the config file, relative to the consumer repository root
+        required: false
+        type: string
+        default: .config.yml
 
+# Fixed workflow settings, not caller inputs.
 env:
-  RELEASE_TAG: ${{ github.ref_name }}
+  RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
   CHECKOUT_FETCH_DEPTH: "0"
   FILTER_OUT_DUPLICATE_COMMITS: "true"
   EXCLUDE_PRE_RELEASES: "false" # ignore pre-release tags when selecting the previous release
@@ -28,8 +32,6 @@ env:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
 
@@ -41,6 +43,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: ${{ env.CHECKOUT_FETCH_DEPTH }}
+
+      - name: Read project settings
+        uses: MFlisar/kmp-devtools/.github/actions/read-config@main
+        with:
+          config-file: ${{ inputs.config-file }}
 
       - name: Append sorted commit list
         env:

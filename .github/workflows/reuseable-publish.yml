@@ -1,21 +1,37 @@
 # -----------------------
 # Publish Maven artifacts to the selected repository
-# - runs when a GitHub release is published
-# - publishes to the single destination selected by publish.target in .config.yml
+# - called by consumer workflows
+# - publishes to the single destination selected by publish.target in config-file
 # - selects macos-latest when iOS/macOS targets are configured, otherwise ubuntu-latest
 # - Maven Central requires GPG_KEY, GPG_PASSWORD, MAVEN_CENTRAL_USERNAME and
 #   MAVEN_CENTRAL_PASSWORD; GitHub publishing requires TARGET_REPOSITORY_TOKEN
 # -----------------------
 
 name: Publish
-run-name: "${{ github.event_name }} - ${{ github.ref_name }}"
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      config-file:
+        description: Path to the config file, relative to the consumer repository root
+        required: false
+        type: string
+        default: .config.yml
+    secrets:
+      GPG_KEY:
+        required: false
+      GPG_PASSWORD:
+        required: false
+      MAVEN_CENTRAL_USERNAME:
+        required: false
+      MAVEN_CENTRAL_PASSWORD:
+        required: false
+      TARGET_REPOSITORY_TOKEN:
+        required: false
 
+# Fixed workflow settings, not caller inputs.
 env:
-  RELEASE_TAG: ${{ github.event.release.tag_name }} # tag of the published release
+  RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
   JAVA_DISTRIBUTION: "temurin"
 
 permissions:
@@ -39,14 +55,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Read publishing settings from .config.yml
+      - name: Read publishing settings
         id: read-config
-        uses: ./.github/actions/read-config
+        uses: MFlisar/kmp-devtools/.github/actions/read-config@main
+        with:
+          config-file: ${{ inputs.config-file }}
 
       - name: Validate publishing credentials
-        if: ${{ steps.read-config.outputs.github-enabled == 'true' }}
+        if: ${{ steps.read-config.outputs.publish-enabled == 'true' }}
         env:
           TARGET_REPOSITORY_TOKEN: ${{ secrets.TARGET_REPOSITORY_TOKEN }}
+          GPG_KEY: ${{ secrets.GPG_KEY }}
+          GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           PUBLISH_ENABLED: ${{ steps.read-config.outputs.publish-enabled }}
           PUBLISH_TARGET: ${{ steps.read-config.outputs.publish-target }}
           MAVEN_CENTRAL_ENABLED: ${{ steps.read-config.outputs.maven-central-enabled }}
@@ -54,8 +76,23 @@ jobs:
           JAVA_VERSION: ${{ steps.read-config.outputs.java-version }}
         run: |
           set -euo pipefail
-          if [[ -z "$TARGET_REPOSITORY_TOKEN" ]]; then
-            echo "::error::TARGET_REPOSITORY_TOKEN is required when GitHub publishing is enabled."
+          required_secrets=()
+          case "$PUBLISH_TARGET" in
+            maven-central)
+              required_secrets=(GPG_KEY GPG_PASSWORD MAVEN_CENTRAL_USERNAME MAVEN_CENTRAL_PASSWORD)
+              ;;
+            github)
+              required_secrets=(TARGET_REPOSITORY_TOKEN)
+              ;;
+          esac
+          missing_credentials=false
+          for secret in "${required_secrets[@]}"; do
+            if [[ -z "${!secret}" ]]; then
+              echo "::error::$secret is required for publish.target=$PUBLISH_TARGET."
+              missing_credentials=true
+            fi
+          done
+          if [[ "$missing_credentials" == "true" ]]; then
             exit 1
           fi
 
@@ -137,8 +174,8 @@ jobs:
           CI=true ./gradlew "${publish_tasks[@]}" --no-daemon --parallel
         env:
           PUBLISH_TARGET: ${{ needs.check-publishing.outputs.publish-target }}
-          VERSION: ${{ github.event.release.tag_name }}
-          TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ env.RELEASE_TAG }}
+          TAG: ${{ env.RELEASE_TAG }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSWORD }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
@@ -177,7 +214,7 @@ jobs:
         shell: bash
         env:
           TARGET_REPOSITORY_PATH: ${{ needs.check-publishing.outputs.target-path }}
-          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+          RELEASE_VERSION: ${{ env.RELEASE_TAG }}
         run: |
           set -euo pipefail
           target_directory="$GITHUB_WORKSPACE/target-repository"
@@ -215,7 +252,7 @@ jobs:
         working-directory: target-repository
         env:
           TARGET_REPOSITORY_PATH: ${{ needs.check-publishing.outputs.target-path }}
-          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+          RELEASE_VERSION: ${{ env.RELEASE_TAG }}
           TARGET_BRANCH: ${{ needs.check-publishing.outputs.target-branch }}
         run: |
           set -euo pipefail

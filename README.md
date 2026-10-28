@@ -19,6 +19,71 @@ Im Menü von `devTools` stehen zur Verfügung:
 | `updateDevTools` (`u`) | Aktualisiert die kmp-devtools-Version in Versionskatalog, `settings.gradle.kts` und GitHub-Workflows. |
 | `downloadFiles` (`d`) | Lädt die vorgesehenen GitHub-Workflow-Dateien ins Projekt. |
 
+## Wiederverwendbare GitHub-Workflows
+
+Die folgenden Workflows werden im Consumer-Projekt auf Job-Ebene über `uses` aufgerufen:
+
+Fertige Consumer-Vorlagen heißen `delegating-*.yml`, liegen unter `files/workflows` und referenzieren Version
+`9.0.5`. Kopiere die vier YAML-Dateien nach `.github/workflows` im Library-Projekt.
+Pages und Markdown-Dokumentation laufen bei Pushes auf `main` oder `master`;
+Publishing und Release Notes beim Veröffentlichen eines Releases.
+
+| Workflow | Zweck | Erforderliche Berechtigungen |
+|---|---|---|
+| `reuseable-publish.yml` | Veröffentlicht je nach `publish.target` auf Maven Central oder in einem GitHub-Maven-Repository; `none` überspringt Publishing. | `contents: read` |
+| `reuseable-update-github-pages.yml` | Baut Dokka und konfigurierte Wasm-Demos und veröffentlicht GitHub Pages. | `contents: read`, `pages: write`, `id-token: write` |
+| `reuseable-update-markdown-docs.yml` | Aktualisiert Markdown-Dokumentation, prüft Links und pusht Änderungen. | `contents: write` |
+| `reuseable-update-tag-release-notes.yml` | Ergänzt bestehende Release Notes um die sortierte Commit-Liste. | `contents: write` |
+
+Der einzige Input ist `config-file`: ein Pfad relativ zum Root des Consumer-Projekts,
+standardmäßig `.config.yml`. Ohne `with` wird dieser Standard verwendet. Projektwerte
+wie die Java-Version werden daraus gelesen. Die festen `env`-Werte bleiben im Workflow
+sichtbar, sind aber keine aufrufbaren Einstellungen; sie zeigen auch, welche Werte
+später bei Bedarf in die Config ausgelagert werden können.
+
+Beim Markdown-Linkcheck werden die GitHub-Pages-Root-URL des Repositorys und alle
+unter `apps.publish.url-path` konfigurierten Publish-URLs automatisch ausgeschlossen
+(mit optionalem abschließendem Slash, Query oder Fragment). Die Config-Action liefert
+diese relativen Pfade als `publish-url-paths-json`; der Markdown-Workflow erzeugt
+daraus direkt vor Lychee die URL-Filter. Andere URLs werden weiterhin geprüft.
+
+```yaml
+name: Documentation
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    uses: MFlisar/kmp-devtools/.github/workflows/reuseable-update-markdown-docs.yml@main
+    with:
+      config-file: .config.yml
+```
+
+Trigger und optional `run-name` definiert der Consumer. Publishing wird üblicherweise
+bei `release: types: [published]` aufgerufen. Für Maven Central benötigt der Publishing-Workflow
+`GPG_KEY`, `GPG_PASSWORD`, `MAVEN_CENTRAL_USERNAME` und `MAVEN_CENTRAL_PASSWORD`,
+die der Aufrufer explizit über `secrets` oder über `secrets: inherit` weitergibt.
+Die Publishing-Vorlage verwendet `secrets: inherit` (innerhalb desselben Benutzers,
+derselben Organisation oder desselben Enterprise). Für andere Aufrufer werden
+die benötigten Secrets explizit zugeordnet. Die anderen drei Vorlagen benötigen
+keine Secret-Weitergabe; `GITHUB_TOKEN` steht automatisch zur Verfügung.
+Für `publish.target: github` wird stattdessen `TARGET_REPOSITORY_TOKEN` mit
+Schreibzugriff auf das konfigurierte Ziel-Repository benötigt.
+Für Release Notes muss bereits ein Release zum aktuellen Tag existieren; bei einem
+Tag-Push muss der Consumer dessen Erstellung vor dem Aufruf sicherstellen.
+Für GitHub Pages muss das Consumer-Repository für die Bereitstellung über GitHub
+Actions eingerichtet sein.
+
+Die Workflows checken das Consumer-Repository aus und verwenden zentral
+`MFlisar/kmp-devtools/.github/actions/read-config@main`; eine lokale Kopie der Action
+ist nicht erforderlich. Der Config-Pfad wird an diese Action weitergegeben;
+Gradle liest weiterhin seine `.config.yml` im Projekt-Root.
+`publish.yml` bleibt ein lokaler, nicht wiederverwendbarer Workflow dieses Repositorys.
+
 ## Aufbau von `.config.yml`
 
 Die Datei enthält die projektweiten Angaben für Publishing, Module und die Dokumentationsgenerierung. Pfade beziehen sich auf das Projektverzeichnis.

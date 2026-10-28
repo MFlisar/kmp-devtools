@@ -111,6 +111,7 @@ outputs = {
   "target-path" => target_path,
   "page-title" => page_title,
   "demo-enabled" => !demos.empty?,
+  "publish-url-paths-json" => JSON.generate(url_paths),
   "demo-apps-json" => JSON.generate(demo_apps)
 }
 

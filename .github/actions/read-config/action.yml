@@ -39,6 +39,9 @@ outputs:
   demo-apps-json:
     description: JSON array of published demo app metadata with url-path, task, and html-path
     value: ${{ steps.parse.outputs.demo-apps-json }}
+  publish-url-paths-json:
+    description: JSON array of all relative apps.publish.url-path values
+    value: ${{ steps.parse.outputs.publish-url-paths-json }}
 runs:
   using: composite
   steps:
