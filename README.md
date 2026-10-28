@@ -19,6 +19,19 @@ Im Menü von `devTools` stehen zur Verfügung:
 | `updateDevTools` (`u`) | Aktualisiert die kmp-devtools-Version in Versionskatalog, `settings.gradle.kts` und GitHub-Workflows. |
 | `downloadFiles` (`d`) | Lädt die vorgesehenen GitHub-Workflow-Dateien ins Projekt. |
 
+## Automatische Versionssynchronisierung
+
+Das Settings-Plugin liest `kmpdevtools` aus dem Abschnitt `[versions]` in
+`gradle/mflisar.versions.toml`. Diese Version ist die Soll-Version für den literalen
+Plugin-Eintrag in `settings.gradle.kts` und die kmp-devtools-Workflow-Referenzen in
+`.github/workflows/*.yml` und `*.yaml`.
+Bei Abweichungen werden die Dateien aktualisiert und der aktuelle Gradle-Lauf mit
+einer entsprechenden Fehlermeldung abgebrochen. Danach muss der Sync beziehungsweise
+Build erneut gestartet werden. Sind alle Versionen konsistent, läuft Gradle normal weiter.
+Das manuelle Werkzeug `updateDevTools` verwendet dieselbe Update-Logik und aktualisiert
+zusätzlich die Soll-Version im Katalog. Die zuvor eingetragene Settings-Plugin-Version
+muss noch auflösbar sein, damit die automatische Synchronisierung ausgeführt werden kann.
+
 ## Wiederverwendbare GitHub-Workflows
 
 Die folgenden Workflows werden im Consumer-Projekt auf Job-Ebene über `uses` aufgerufen:

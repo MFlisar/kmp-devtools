@@ -1,6 +1,7 @@
 package com.michaelflisar.kmpdevtools.tasks
 
 import com.michaelflisar.kmpdevtools.TaskUtil
+import com.michaelflisar.kmpdevtools.core.VersionSynchronizer
 import com.michaelflisar.kmpdevtools.core.utils.GithubUtil
 import java.io.File
 
@@ -28,51 +29,8 @@ class UpdateDevToolsTask(
             return
         }
 
-        fun replaceInFile(file: File, regex: Regex, replacement: String) {
-            val text = file.readText()
-            val newText = text.replace(regex, replacement)
-            if (text != newText) {
-                file.writeText(newText)
-                println("Updated: ${file.path}")
-            }
-        }
-
-        // 1) gradle/mflisar.versions.toml => kmpdevtools = "6.4.1" ersetzen
-        val depsFile = File(root, "gradle/mflisar.versions.toml")
-        val depsText = depsFile.readText()
-        val depsRegex = Regex("""(kmpdevtools\s*=\s*)".*?"""")
-        val depsNewText = depsRegex.replace(depsText) { matchResult ->
-            val prefix = matchResult.groupValues[1]
-            "${prefix}\"$newVersion\""
-        }
-        if (depsText != depsNewText) {
-            depsFile.writeText(depsNewText)
-            println("Updated: ${depsFile.path}")
-        }
-
-        // 2) settings.gradle.kts => id("io.github.mflisar.kmpdevtools.plugins-settings-gradle") version "6.4.1" ersetzen
-        val settingsFile = File(root, "settings.gradle.kts")
-        replaceInFile(
-            file = settingsFile,
-            regex = Regex("""id\("io\.github\.mflisar\.kmpdevtools\.plugins-settings-gradle"\)\s*version\s*".*?""""),
-            replacement = """id("io.github.mflisar.kmpdevtools.plugins-settings-gradle") version "$newVersion""""
-        )
-
-        // 3) in .github/workflows/*.yml uses: MFlisar/kmp-devtools/.github/workflows/kmp-devtools-*.yml@6.4.1 ersetzen
-        val workflowsDir = File(root, ".github/workflows")
-        workflowsDir.listFiles { f -> f.extension == "yml" }?.forEach { ymlFile ->
-            val text = ymlFile.readText()
-            // regex: nach dem @ kann auch ein text stehen
-            val regex = Regex("""uses:\s*MFlisar/kmp-devtools/\.github/workflows/([^@]+)@(\S+)""")
-            val newText = regex.replace(text) { matchResult ->
-                val fileName = matchResult.groupValues[1]
-                "uses: MFlisar/kmp-devtools/.github/workflows/$fileName@$newVersion"
-            }
-            if (text != newText) {
-                ymlFile.writeText(newText)
-                println("Updated: ${ymlFile.path}")
-            }
-        }
+        val updatedFiles = VersionSynchronizer.synchronizeVersions(root, newVersion)
+        updatedFiles.forEach { println("Updated: ${it.relativeTo(root).path}") }
 
         println()
         println("ATTENTION:")
