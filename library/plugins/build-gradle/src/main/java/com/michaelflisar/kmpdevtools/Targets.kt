@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.konan.target.KonanTarget
 import java.io.File
 
 class Targets(
-    vararg platforms: Platform
+    vararg platforms: Platform,
 ) {
     val platforms = platforms.toList()
 
@@ -62,6 +62,7 @@ class Targets(
         libraryModuleConfig: LibraryModuleConfig,
         androidConfig: AndroidLibraryConfig,
         androidTarget: KotlinMultiplatformAndroidLibraryTarget,
+        configureAndroid: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit) = {},
     ) {
         val project = libraryModuleConfig.project
         val config = libraryModuleConfig.config
@@ -70,7 +71,7 @@ class Targets(
             project,
             config,
             androidConfig,
-            {}//configureAndroid
+            configureAndroid
         )
     }
 
@@ -78,6 +79,7 @@ class Targets(
         appModuleConfig: AppModuleConfig,
         androidConfig: AndroidLibraryConfig,
         androidTarget: KotlinMultiplatformAndroidLibraryTarget,
+        configureAndroid: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit) = {},
     ) {
         val project = appModuleConfig.project
         val config = appModuleConfig.config
@@ -86,7 +88,7 @@ class Targets(
             project,
             config,
             androidConfig,
-            {}//configureAndroid
+            configureAndroid
         )
     }
 

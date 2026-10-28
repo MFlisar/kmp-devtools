@@ -244,8 +244,125 @@ jobs:
               sys.exit(1)
           PY
 
-          # Preserve existing repository metadata while adding new versioned artifacts.
+          # Keep published versioned files immutable; Maven metadata is merged below.
           rsync -a --ignore-existing "$RUNNER_TEMP/maven-artifacts/" "$target_directory/"
+
+          python3 - <<'PY'
+          import hashlib
+          import os
+          import re
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          artifacts = Path(os.environ["RUNNER_TEMP"]) / "maven-artifacts"
+          target = Path(os.environ["target_directory"])
+          checksum_algorithms = {
+              ".md5": "md5",
+              ".sha1": "sha1",
+              ".sha256": "sha256",
+              ".sha512": "sha512",
+          }
+
+          def version_key(version):
+              match = re.fullmatch(
+                  r"v?(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?",
+                  version,
+              )
+              if match is None:
+                  return ((), 0, ((1, version.casefold()),))
+
+              core = tuple(int(part) for part in match.group(1).split("."))
+              core += (0,) * max(0, 3 - len(core))
+              prerelease = match.group(2)
+              prerelease_key = tuple(
+                  (0, int(part)) if part.isdigit() else (1, part.casefold())
+                  for part in re.findall(r"[0-9]+|[A-Za-z]+", prerelease or "")
+              )
+              return (core, int(prerelease is None), prerelease_key)
+
+          for source_metadata in artifacts.rglob("maven-metadata.xml"):
+              relative_path = source_metadata.relative_to(artifacts)
+              target_metadata = target / relative_path
+              source_root = ElementTree.parse(source_metadata).getroot()
+              if source_root.find("version") is not None:
+                  continue
+
+              target_root = ElementTree.parse(target_metadata).getroot()
+
+              source_versioning = source_root.find("versioning")
+              target_versioning = target_root.find("versioning")
+              if source_versioning is None or target_versioning is None:
+                  continue
+
+              source_versions = source_versioning.find("versions")
+              target_versions = target_versioning.find("versions")
+              if target_versions is None:
+                  target_versions = ElementTree.SubElement(target_versioning, "versions")
+
+              versions = {
+                  version.text
+                  for version in target_versions.findall("version")
+                  if version.text
+              }
+              if source_versions is not None:
+                  versions.update(
+                      version.text
+                      for version in source_versions.findall("version")
+                      if version.text
+                  )
+
+              for version in list(target_versions):
+                  target_versions.remove(version)
+              for version in sorted(versions, key=version_key):
+                  ElementTree.SubElement(target_versions, "version").text = version
+
+              for field in ("latest", "release"):
+                  candidates = versions.copy()
+                  for versioning in (source_versioning, target_versioning):
+                      value = versioning.findtext(field)
+                      if value:
+                          candidates.add(value)
+                  if field == "release":
+                      candidates = {
+                          version
+                          for version in candidates
+                          if not version.upper().endswith("-SNAPSHOT")
+                      }
+                  if not candidates:
+                      continue
+
+                  element = target_versioning.find(field)
+                  if element is None:
+                      element = ElementTree.Element(field)
+                      target_versioning.insert(
+                          list(target_versioning).index(target_versions),
+                          element,
+                      )
+                  element.text = max(candidates, key=version_key)
+
+              source_last_updated = source_versioning.findtext("lastUpdated")
+              if source_last_updated:
+                  element = target_versioning.find("lastUpdated")
+                  if element is None:
+                      element = ElementTree.SubElement(target_versioning, "lastUpdated")
+                  element.text = source_last_updated
+
+              target_metadata.parent.mkdir(parents=True, exist_ok=True)
+              ElementTree.indent(target_root, space="  ")
+              ElementTree.ElementTree(target_root).write(
+                  target_metadata,
+                  encoding="UTF-8",
+                  xml_declaration=True,
+              )
+
+              content = target_metadata.read_bytes()
+              for suffix, algorithm in checksum_algorithms.items():
+                  checksum_path = Path(str(target_metadata) + suffix)
+                  source_checksum = Path(str(source_metadata) + suffix)
+                  if checksum_path.exists() or source_checksum.exists():
+                      digest = hashlib.new(algorithm, content).hexdigest()
+                      checksum_path.write_text(digest + "\n", encoding="ascii")
+          PY
 
       - name: Commit and push artifacts
         if: ${{ needs.check-publishing.outputs.github-enabled == 'true' }}

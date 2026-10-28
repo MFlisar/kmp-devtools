@@ -21,7 +21,7 @@ env:
   CHECKOUT_FETCH_DEPTH: "0"
   FILTER_OUT_DUPLICATE_COMMITS: "true"
   EXCLUDE_PRE_RELEASES: "false" # ignore pre-release tags when selecting the previous release
-  COMMITS_HEADING: "## Changes in this release"
+  COMMITS_HEADING: "## ✨ Changes"
   SKIP_EMPTY_RELEASE_NOTES: "false" # leave release notes untouched when no messages remain
   RELEASE_TAG_REGEX: '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
   STABLE_RELEASE_TAG_REGEX: '^v?[0-9]+\.[0-9]+\.[0-9]+(\+[0-9A-Za-z.-]+)?$'
@@ -29,6 +29,7 @@ env:
   COMMIT_MESSAGE_EXCLUDE_REGEX: |
     ^Merge branch
     ^[. ]+$
+    (?i)\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]
 
 permissions:
   contents: write
