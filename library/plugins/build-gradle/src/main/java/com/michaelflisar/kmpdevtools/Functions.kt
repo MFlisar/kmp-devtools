@@ -1,8 +1,6 @@
 package com.michaelflisar.kmpdevtools
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import com.android.build.api.dsl.LibraryExtension
-import com.android.build.gradle.internal.dsl.LibraryExtensionImpl
 import com.codingfeline.buildkonfig.compiler.FieldSpec.Type
 import com.codingfeline.buildkonfig.gradle.BuildKonfigExtension
 import com.codingfeline.buildkonfig.gradle.TargetConfigDsl
@@ -11,13 +9,11 @@ import com.michaelflisar.composechangelog.format.DefaultVersionFormatter
 import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
 import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
-import com.michaelflisar.kmpdevtools.core.Platform
+import com.michaelflisar.kmpdevtools.core.Target
 import com.michaelflisar.kmpdevtools.core.Config
 import org.gradle.api.JavaVersion
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 import kotlin.text.toInt
 
@@ -25,39 +21,39 @@ class SourceSetPlatformDsl internal constructor(
     private val buildTargets: Targets,
     private val sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
 ) {
-    private val dependencies = mutableMapOf<Platform, MutableSet<KotlinSourceSet>>()
-    private val additionalSourceSets = mutableMapOf<Platform, MutableSet<KotlinSourceSet>>()
+    private val dependencies = mutableMapOf<Target, MutableSet<KotlinSourceSet>>()
+    private val additionalSourceSets = mutableMapOf<Target, MutableSet<KotlinSourceSet>>()
 
-    infix fun Platform.addSourceSet(sourceSet: KotlinSourceSet) {
+    infix fun Target.addSourceSet(sourceSet: KotlinSourceSet) {
         if (buildTargets.isEnabled(this)) {
             additionalSourceSets.getOrPut(this) { mutableSetOf() }.add(sourceSet)
         }
     }
 
-    infix fun List<Platform>.addSourceSet(sourceSet: KotlinSourceSet) {
+    infix fun List<Target>.addSourceSet(sourceSet: KotlinSourceSet) {
         forEach {
             it.addSourceSet(sourceSet)
         }
     }
 
-    infix fun KotlinSourceSet.supportedBy(platforms: List<Platform>) {
-        platforms.forEach { platform ->
+    infix fun KotlinSourceSet.supportedBy(targets: List<Target>) {
+        targets.forEach { platform ->
             if (buildTargets.isEnabled(platform))
                 dependencies.getOrPut(platform) { mutableSetOf() }.add(this)
         }
     }
 
-    infix fun KotlinSourceSet.supportedBy(platform: Platform) = supportedBy(listOf(platform))
+    infix fun KotlinSourceSet.supportedBy(target: Target) = supportedBy(listOf(target))
 
-    operator fun List<Platform>.not(): List<Platform> {
-        return buildTargets.platforms.filter { !this.contains(it) }
+    operator fun List<Target>.not(): List<Target> {
+        return buildTargets.targetsList.filter { !this.contains(it) }
     }
 
-    operator fun Platform.not() = !listOf(this)
+    operator fun Target.not() = !listOf(this)
 
     internal fun setupDependencies(log: Boolean) {
 
-        buildTargets.platforms.forEach { platform ->
+        buildTargets.targetsList.forEach { platform ->
 
             if (log)
                 println("Dependencies for platform ${platform.name}:")
@@ -91,16 +87,16 @@ class SourceSetPlatformDsl internal constructor(
         }
     }
 
-    private fun calcAllDefaultPlatformsForSourceSet(platform: Platform): Set<KotlinSourceSet> {
-        return platform.targets.map { target ->
-            val name = "${target}Main"
+    private fun calcAllDefaultPlatformsForSourceSet(target: Target): Set<KotlinSourceSet> {
+        return target.targets.map { t ->
+            val name = "${t}Main"
             sourceSets.findByName(name)
-                ?: throw IllegalArgumentException("Source set $name not found for platform ${platform.name}")
+                ?: throw IllegalArgumentException("Source set $name not found for platform ${target.name}")
         }.toSet()
     }
 
-    private fun calcAllCustomPlatformsForSourceSet(platform: Platform): Set<KotlinSourceSet> {
-        return additionalSourceSets[platform].orEmpty()
+    private fun calcAllCustomPlatformsForSourceSet(target: Target): Set<KotlinSourceSet> {
+        return additionalSourceSets[target].orEmpty()
     }
 
     private fun <T> Iterable<T>.joinToStringOrEmpty(transform: (T) -> String): String {
@@ -116,7 +112,7 @@ class SourceSetPlatformDsl internal constructor(
 
         // 1) Pro Platform alle source sets (default + custom) ausgeben
         println("Source sets per platform:")
-        buildTargets.platforms.forEach { platform ->
+        buildTargets.targetsList.forEach { platform ->
             val defaultSourceSets = calcAllDefaultPlatformsForSourceSet(platform)
             val customSourceSets = calcAllCustomPlatformsForSourceSet(platform)
             println("- ${platform.name}: ${defaultSourceSets.joinToStringOrEmpty { it.name }} (custom: ${customSourceSets.joinToStringOrEmpty { it.name }})")
@@ -125,13 +121,13 @@ class SourceSetPlatformDsl internal constructor(
         // 2) Pro source set alle platforms ausgeben, die von der source set unterstützt werden
         println("")
         println("Platforms per source set:")
-        val allSourceSets = buildTargets.platforms.map { platform ->
+        val allSourceSets = buildTargets.targetsList.map { platform ->
             val defaultSourceSets = calcAllDefaultPlatformsForSourceSet(platform)
             val customSourceSets = calcAllCustomPlatformsForSourceSet(platform)
             defaultSourceSets + customSourceSets
         }.flatten().distinct()
         allSourceSets.forEach { sourceSet ->
-            val supportedPlatforms = buildTargets.platforms.filter { platform ->
+            val supportedPlatforms = buildTargets.targetsList.filter { platform ->
                 val defaultSourceSets = calcAllDefaultPlatformsForSourceSet(platform)
                 val customSourceSets = calcAllCustomPlatformsForSourceSet(platform)
                 (defaultSourceSets + customSourceSets).contains(sourceSet)

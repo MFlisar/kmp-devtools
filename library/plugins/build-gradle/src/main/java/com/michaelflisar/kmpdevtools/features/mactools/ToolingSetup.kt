@@ -1,4 +1,4 @@
-package com.michaelflisar.kmpdevtools.tooling
+package com.michaelflisar.kmpdevtools.features.mactools
 
 import com.michaelflisar.kmpdevtools.core.classes.RelativePath
 

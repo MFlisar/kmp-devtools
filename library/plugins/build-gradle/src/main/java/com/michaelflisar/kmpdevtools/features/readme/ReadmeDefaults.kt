@@ -1,8 +1,8 @@
-package com.michaelflisar.kmpdevtools.readme
+package com.michaelflisar.kmpdevtools.features.readme
 
-import com.michaelflisar.kmpdevtools.core.Platform
+import com.michaelflisar.kmpdevtools.core.Target
 import com.michaelflisar.kmpdevtools.core.Config
-import com.michaelflisar.kmpdevtools.readme.classes.ReadmeRegion
+import com.michaelflisar.kmpdevtools.features.readme.classes.ReadmeRegion
 
 object ReadmeDefaults {
 
@@ -128,31 +128,31 @@ object ReadmeDefaults {
     )
 
     val ImageAndroid = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/android-${Platform.ANDROID.color}?style=for-the-badge",
+        imageUrl = "https://img.shields.io/badge/android-${Target.ANDROID.color}?style=for-the-badge",
         altText = "Android"
     )
     val ImageIOS = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/ios-${Platform.IOS.color}?style=for-the-badge",
+        imageUrl = "https://img.shields.io/badge/ios-${Target.IOS.color}?style=for-the-badge",
         altText = "iOS"
     )
-    val ImageWindows = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/windows-${Platform.WINDOWS.color}?style=for-the-badge",
-        altText = "Windows"
+    val ImageJVM = UpdateReadmeUtil.markdownImage(
+        imageUrl = "https://img.shields.io/badge/jvm-${Target.JVM.color}?style=for-the-badge",
+        altText = "JVM"
     )
     val ImageMacOS = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/macos-${Platform.MACOS.color}?style=for-the-badge",
+        imageUrl = "https://img.shields.io/badge/macos-${Target.MACOS.color}?style=for-the-badge",
         altText = "macOS"
     )
     val ImageLinux = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/linux-${Platform.LINUX.color}?style=for-the-badge",
+        imageUrl = "https://img.shields.io/badge/linux-${Target.LINUX.color}?style=for-the-badge",
         altText = "Linux"
     )
     val ImageWASM = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/wasm-${Platform.WASM.color}?style=for-the-badge",
+        imageUrl = "https://img.shields.io/badge/wasm-${Target.WASM.color}?style=for-the-badge",
         altText = "WebAssembly"
     )
     val ImageJS = UpdateReadmeUtil.markdownImage(
-        imageUrl = "https://img.shields.io/badge/javascript-${Platform.JS.color}?style=for-the-badge",
+        imageUrl = "https://img.shields.io/badge/javascript-${Target.JS.color}?style=for-the-badge",
         altText = "JavaScript"
     )
 

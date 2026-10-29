@@ -1,13 +1,14 @@
 package com.michaelflisar.kmpdevtools
 
 import com.michaelflisar.kmpdevtools.core.Config
-import com.michaelflisar.kmpdevtools.readme.ReadmeDefaults
-import com.michaelflisar.kmpdevtools.readme.UpdateReadmeUtil
-import com.michaelflisar.kmpdevtools.tasks.DownloadFilesTask
-import com.michaelflisar.kmpdevtools.tasks.UpdateDevToolsTask
-import com.michaelflisar.kmpdevtools.tooling.MacActions
-import com.michaelflisar.kmpdevtools.tooling.MacDefaults
-import com.michaelflisar.kmpdevtools.tooling.ToolingSetup
+import com.michaelflisar.kmpdevtools.features.downloadfiles.DownloadFilesTask
+import com.michaelflisar.kmpdevtools.features.mactools.MacActions
+import com.michaelflisar.kmpdevtools.features.mactools.MacDefaults
+import com.michaelflisar.kmpdevtools.features.mactools.ToolingSetup
+import com.michaelflisar.kmpdevtools.features.readme.ReadmeDefaults
+import com.michaelflisar.kmpdevtools.features.readme.UpdateReadmeUtil
+import com.michaelflisar.kmpdevtools.features.updatedevtools.UpdateDevToolsTask
+import com.michaelflisar.kmpdevtools.internal.TaskUtil
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project

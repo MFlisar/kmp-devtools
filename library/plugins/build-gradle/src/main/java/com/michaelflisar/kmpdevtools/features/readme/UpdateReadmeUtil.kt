@@ -1,10 +1,10 @@
-package com.michaelflisar.kmpdevtools.readme
+package com.michaelflisar.kmpdevtools.features.readme
 
 import com.michaelflisar.kmpdevtools.core.Config
-import com.michaelflisar.kmpdevtools.readme.classes.CustomMarkdownFile
-import com.michaelflisar.kmpdevtools.readme.classes.FolderLink
-import com.michaelflisar.kmpdevtools.readme.classes.Partial
-import com.michaelflisar.kmpdevtools.readme.classes.Placeholder
+import com.michaelflisar.kmpdevtools.features.readme.classes.CustomMarkdownFile
+import com.michaelflisar.kmpdevtools.features.readme.classes.FolderLink
+import com.michaelflisar.kmpdevtools.features.readme.classes.Partial
+import com.michaelflisar.kmpdevtools.features.readme.classes.Placeholder
 import java.io.File
 
 object UpdateReadmeUtil {
@@ -188,7 +188,7 @@ object UpdateReadmeUtil {
             ReadmeDefaults.ImageSupportedPlatforms,
             if (isAndroidSupported) ReadmeDefaults.ImageAndroid else null,
             if (isIosSupported) ReadmeDefaults.ImageIOS else null,
-            if (isWindowsSupported) ReadmeDefaults.ImageWindows else null,
+            if (isWindowsSupported) ReadmeDefaults.ImageJVM else null,
             if (isMacOsSupported) ReadmeDefaults.ImageMacOS else null,
             if (isLinuxSupported) ReadmeDefaults.ImageLinux else null,
             if (isWasmSupported) ReadmeDefaults.ImageWASM else null,

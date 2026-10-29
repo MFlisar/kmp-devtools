@@ -1,4 +1,4 @@
-package com.michaelflisar.kmpdevtools.readme.classes
+package com.michaelflisar.kmpdevtools.features.readme.classes
 
 class ReadmeRegion(
     val image: String?,

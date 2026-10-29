@@ -1,6 +1,6 @@
-package com.michaelflisar.kmpdevtools
+package com.michaelflisar.kmpdevtools.internal
 
-object TaskUtil {
+internal object TaskUtil {
 
     fun readUserInput(prompt: String, forceNotEmpty: Boolean = true): String {
         println(prompt)

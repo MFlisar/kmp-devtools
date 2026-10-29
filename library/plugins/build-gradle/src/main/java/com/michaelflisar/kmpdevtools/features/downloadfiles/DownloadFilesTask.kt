@@ -1,5 +1,6 @@
-package com.michaelflisar.kmpdevtools.tasks
+package com.michaelflisar.kmpdevtools.features.downloadfiles
 
+import com.michaelflisar.kmpdevtools.interfaces.ITask
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection

@@ -1,8 +1,9 @@
-package com.michaelflisar.kmpdevtools.tasks
+package com.michaelflisar.kmpdevtools.features.updatedevtools
 
-import com.michaelflisar.kmpdevtools.TaskUtil
 import com.michaelflisar.kmpdevtools.core.VersionSynchronizer
 import com.michaelflisar.kmpdevtools.core.utils.GithubUtil
+import com.michaelflisar.kmpdevtools.interfaces.ITask
+import com.michaelflisar.kmpdevtools.internal.TaskUtil
 import java.io.File
 
 class UpdateDevToolsTask(

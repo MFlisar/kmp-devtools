@@ -1,4 +1,4 @@
-package com.michaelflisar.kmpdevtools.tasks
+package com.michaelflisar.kmpdevtools.interfaces
 
 import java.io.File
 

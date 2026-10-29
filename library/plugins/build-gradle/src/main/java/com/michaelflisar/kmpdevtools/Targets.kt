@@ -6,7 +6,7 @@ import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
 import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
 import com.michaelflisar.kmpdevtools.configs.WasmAppConfig
 import com.michaelflisar.kmpdevtools.core.Config
-import com.michaelflisar.kmpdevtools.core.Platform
+import com.michaelflisar.kmpdevtools.core.Target
 import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -22,11 +22,11 @@ import org.jetbrains.kotlin.konan.target.KonanTarget
 import java.io.File
 
 class Targets(
-    vararg platforms: Platform,
+    vararg targets: Target,
 ) {
-    val platforms = platforms.toList()
+    internal val targetsList = targets.toList()
 
-    fun isEnabled(target: Platform) = platforms.contains(target)
+    fun isEnabled(target: Target) = targetsList.contains(target)
 
     fun setupTargetsLibrary(
         libraryModuleConfig: LibraryModuleConfig,
@@ -104,7 +104,7 @@ class Targets(
         configureWASM: (KotlinWasmJsTargetDsl.() -> Unit) = {},
         configureJS: (KotlinJsTargetDsl.() -> Unit) = {},
     ) {
-        if (wasmAppConfig == null && platforms.contains(Platform.WASM)) {
+        if (wasmAppConfig == null && targetsList.contains(Target.WASM)) {
             throw IllegalArgumentException("wasmConfig must be provided when Wasm target is enabled")
         }
         val project = appModuleConfig.project
@@ -134,7 +134,7 @@ class Targets(
         androidConfig: AndroidLibraryConfig,
         configure: (KotlinMultiplatformAndroidLibraryTarget.() -> Unit) = {},
     ) {
-        if (platforms.contains(Platform.ANDROID)) {
+        if (targetsList.contains(Target.ANDROID)) {
 
             project.extensions.configure(KotlinMultiplatformExtension::class.java) {
 
@@ -236,7 +236,7 @@ class Targets(
      *
      * @param project The Gradle project to configure.
      * @param configure A lambda to configure each iOS target.
-     * @param configureTests A lambda to configure simulator tests for applicable iOS targets.
+     * @param configureTests A lambda to configure simulator tests for applicable iOS targetsList.
      */
     private fun setupIOSTarget(
         project: Project,
@@ -244,7 +244,7 @@ class Targets(
         configureTests: (KotlinNativeTargetWithSimulatorTests.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (platforms.contains(Platform.IOS)) {
+            if (targetsList.contains(Target.IOS)) {
                 // iosX64 target removed because Compose Multiplatform 1.11.0 no longer supports Apple x86_64 targets
                 //iosX64 {
                 //    configure()
@@ -277,7 +277,7 @@ class Targets(
         }
 
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (platforms.contains(Platform.IOS)) {
+            if (targetsList.contains(Target.IOS)) {
                 listOf(
                     iosX64(),
                     iosArm64(),
@@ -324,7 +324,7 @@ class Targets(
         configure: (KotlinJvmTarget.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (platforms.contains(Platform.WINDOWS)) {
+            if (targetsList.contains(Target.JVM)) {
                 jvm {
                     configure()
                 }
@@ -343,7 +343,7 @@ class Targets(
         configure: (KotlinNativeTargetWithHostTests.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (platforms.contains(Platform.MACOS)) {
+            if (targetsList.contains(Target.MACOS)) {
                 macosArm64 {
                     configure()
                 }
@@ -362,7 +362,7 @@ class Targets(
         configure: (KotlinNativeTarget.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (platforms.contains(Platform.LINUX)) {
+            if (targetsList.contains(Target.LINUX)) {
                 linuxX64 {
                     configure()
                 }
@@ -386,7 +386,7 @@ class Targets(
         configure: (KotlinWasmJsTargetDsl.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (platforms.contains(Platform.WASM)) {
+            if (targetsList.contains(Target.WASM)) {
                 @OptIn(ExperimentalWasmDsl::class)
                 wasmJs {
                     outputModuleName.set(wasmConfig.moduleName)
@@ -417,7 +417,7 @@ class Targets(
         configure: (KotlinWasmJsTargetDsl.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (platforms.contains(Platform.WASM)) {
+            if (targetsList.contains(Target.WASM)) {
                 @OptIn(ExperimentalWasmDsl::class)
                 wasmJs {
                     nodejs()
@@ -438,7 +438,7 @@ class Targets(
         configure: (KotlinJsTargetDsl.() -> Unit),
     ) {
         project.extensions.configure(KotlinMultiplatformExtension::class.java) {
-            if (platforms.contains(Platform.JS)) {
+            if (targetsList.contains(Target.JS)) {
                 js {
                     configure()
                 }
