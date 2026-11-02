@@ -25,14 +25,23 @@ project = mapping(config, "project")
 general = mapping(config, "config")
 publish_github = mapping(publish, "github")
 
-publish_target = config_value(publish["target"])
-unless %w[none maven-central github].include?(publish_target)
-  abort "publish.target must be one of: none, maven-central, github."
-end
+publish_targets = %w[none maven-central github]
+release_target = config_value(publish["release-target"])
+test_target = config_value(publish["test-target"])
+test_target = "none" if test_target.empty?
+abort "publish.target is no longer supported; use publish.release-target and publish.test-target." if publish.key?("target")
+abort "publish.release-target must be one of: #{publish_targets.join(", ")}." unless publish_targets.include?(release_target)
+abort "publish.test-target must be one of: #{publish_targets.join(", ")}." unless publish_targets.include?(test_target)
+
+publish_type = config_value(ENV.fetch("PUBLISH_TYPE", "release"))
+publish_type = "release" if publish_type.empty?
+abort "publish-type must be one of: release, test." unless %w[release test].include?(publish_type)
+publish_target = publish_type == "test" ? test_target : release_target
 
 publish_enabled = publish_target != "none"
 maven_central_enabled = publish_target == "maven-central"
 github_enabled = publish_target == "github"
+github_required = [release_target, test_target].include?("github")
 java_version = config_value(general["java-version"])
 abort "config.java-version must be set." if java_version.empty?
 
@@ -48,11 +57,11 @@ end
 target_branch = config_value(publish_github["branch"])
 target_path = config_value(publish_github["path"])
 
-if github_enabled
+if github_required
   unless target_repository.match?(/\A[[:alnum:]_.-]+\/[[:alnum:]_.-]+\z/)
     abort "publish.github.repository or publish.github.user and publish.github.repo must identify owner/repository."
   end
-  abort "publish.github.branch must be set when GitHub publishing is enabled." if target_branch.empty?
+  abort "publish.github.branch must be set when a publish target is github." if target_branch.empty?
   unless target_path.empty? || (!target_path.include?("\\") && target_path.split("/").all? { |part| !part.empty? && part != "." && part != ".." })
     abort "publish.github.path must be a relative path without empty, '.' or '..' segments."
   end
@@ -102,7 +111,11 @@ abort "apps.publish.url-path values must not overlap." if overlapping_url_paths
 
 outputs = {
   "publish-enabled" => publish_enabled,
+  "publish-type" => publish_type,
   "publish-target" => publish_target,
+  "release-target" => release_target,
+  "test-target" => test_target,
+  "group-id" => config_value(publish["group-id"]),
   "maven-central-enabled" => maven_central_enabled,
   "github-enabled" => github_enabled,
   "java-version" => java_version,

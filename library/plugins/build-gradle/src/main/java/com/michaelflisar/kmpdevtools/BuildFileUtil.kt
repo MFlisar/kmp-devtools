@@ -40,6 +40,9 @@ object BuildFileUtil {
 
     /**
      * Configures the publishing destination selected in the project's YAML configuration.
+     *
+     * The destination is `publish.release-target` or `publish.test-target`, depending on [publishType]
+     * (defaults to the `PUBLISH_TYPE` environment variable, or `release` if unset).
      */
     fun setupMavenPublish(
         libraryModuleConfig: LibraryModuleConfig.Library,
@@ -50,15 +53,14 @@ object BuildFileUtil {
         autoReleaseOnMavenCentral: (version: String) -> Boolean = { true },
         sign: Boolean = System.getenv("CI")?.toBoolean() == true,
         version: String = System.getenv("TAG") ?: System.getenv("VERSION") ?: "LOCAL-SNAPSHOT",
+        publishType: Config.Publish.Type = Config.Publish.Type.fromEnv(),
     ) {
         val config = libraryModuleConfig.config
         val publish = config.publish
-        val target = publish.target
+        val target = publish.target(publishType)
         when (target) {
             Config.Publish.Target.NONE -> return
-            Config.Publish.Target.MAVEN_CENTRAL -> {
-                publish.requireMavenCentral()
-            }
+            Config.Publish.Target.MAVEN_CENTRAL -> Unit
             Config.Publish.Target.GITHUB -> {
                 publish.requireGithub()
             }

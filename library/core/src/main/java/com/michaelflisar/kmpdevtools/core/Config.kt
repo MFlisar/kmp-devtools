@@ -57,20 +57,39 @@ data class Config(
     @Serializable
     data class Publish(
         @SerialName("group-id") val groupId: String,
-        val target: Target,
+        @SerialName("release-target") val releaseTarget: Target,
+        @SerialName("test-target") val testTarget: Target = Target.NONE,
         val github: Github? = null,
     ) {
-        fun requireMavenCentral() {
-            check(target == Target.MAVEN_CENTRAL) {
-                "'publish.target' must be 'maven-central' to require Maven Central publishing"
+        init {
+            require(github != null || (releaseTarget != Target.GITHUB && testTarget != Target.GITHUB)) {
+                "'publish.github' is required when 'release-target' or 'test-target' is 'github'"
             }
         }
 
-        fun requireGithub(): Github {
-            check(target == Target.GITHUB) {
-                "'publish.target' must be 'github' to require GitHub publishing"
+        fun target(type: Type): Target = when (type) {
+            Type.RELEASE -> releaseTarget
+            Type.TEST -> testTarget
+        }
+
+        fun requireGithub(): Github =
+            github ?: error("'publish.github' is required when a publish target is 'github'")
+
+        enum class Type(val id: String) {
+            RELEASE("release"),
+            TEST("test");
+
+            companion object {
+                const val ENV_NAME = "PUBLISH_TYPE"
+
+                fun parse(value: String): Type =
+                    entries.find { it.id.equals(value.trim(), ignoreCase = true) }
+                        ?: error("Invalid publish type '$value'; expected one of: ${entries.joinToString { it.id }}")
+
+                /** Reads the publish type from the [ENV_NAME] environment variable, defaults to [RELEASE]. */
+                fun fromEnv(): Type =
+                    System.getenv(ENV_NAME)?.takeIf { it.isNotBlank() }?.let(::parse) ?: RELEASE
             }
-            return github ?: error("'publish.github' is required when target is 'github'")
         }
 
         @Serializable

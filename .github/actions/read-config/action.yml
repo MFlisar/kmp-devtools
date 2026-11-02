@@ -5,13 +5,29 @@ inputs:
     description: Path to the project configuration file
     required: false
     default: .config.yml
+  publish-type:
+    description: Publish type (release or test); selects publish.release-target or publish.test-target
+    required: false
+    default: release
 outputs:
   publish-enabled:
-    description: Whether publishing is enabled
+    description: Whether publishing is enabled for the selected publish type
     value: ${{ steps.parse.outputs.publish-enabled }}
+  publish-type:
+    description: Selected publish type (release or test)
+    value: ${{ steps.parse.outputs.publish-type }}
   publish-target:
-    description: Selected publishing target
+    description: Publishing target for the selected publish type
     value: ${{ steps.parse.outputs.publish-target }}
+  release-target:
+    description: Configured publish.release-target
+    value: ${{ steps.parse.outputs.release-target }}
+  test-target:
+    description: Configured publish.test-target
+    value: ${{ steps.parse.outputs.test-target }}
+  group-id:
+    description: Configured publish.group-id
+    value: ${{ steps.parse.outputs.group-id }}
   maven-central-enabled:
     description: Whether Maven Central publishing is enabled
     value: ${{ steps.parse.outputs.maven-central-enabled }}
@@ -49,4 +65,5 @@ runs:
       shell: bash
       env:
         CONFIG_FILE: ${{ inputs.config-file }}
+        PUBLISH_TYPE: ${{ inputs.publish-type }}
       run: ruby "${{ github.action_path }}/read-config.rb"

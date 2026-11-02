@@ -1,10 +1,17 @@
 # -----------------------
-# Publish Maven artifacts to the selected repository
-# - called by consumer workflows
-# - publishes to the single destination selected by publish.target in config-file
+# Publish Maven artifacts and create a GitHub release
+# - called manually by consumer workflows (workflow_dispatch) with a version only
+# - the publish type is derived from the version:
+#   X.Y.Z         => "release": publish.release-target, normal release
+#   X.Y.Z-suffix  => "test":    publish.test-target, pre-release
+# - the first step prints the publish plan (type + destination) to the log and the job summary
+# - validates the version (SemVer, not yet released, greater than the last release)
+# - after publishing creates the tag + GitHub release (test = pre-release) with a sorted commit list
+# - writes a job summary with the last release, the new version, the target and the published artifacts
 # - selects macos-latest when iOS/macOS targets are configured, otherwise ubuntu-latest
 # - Maven Central requires GPG_KEY, GPG_PASSWORD, MAVEN_CENTRAL_USERNAME and
 #   MAVEN_CENTRAL_PASSWORD; GitHub publishing requires TARGET_REPOSITORY_TOKEN
+# - the caller must grant "contents: write"
 # -----------------------
 
 name: Publish
@@ -12,11 +19,25 @@ name: Publish
 on:
   workflow_call:
     inputs:
+      version:
+        description: "Version, also used as tag and release name: X.Y.Z = release (publish.release-target), X.Y.Z-suffix = pre-release (publish.test-target)"
+        required: true
+        type: string
       config-file:
         description: Path to the config file, relative to the consumer repository root
         required: false
         type: string
         default: .config.yml
+    outputs:
+      tag:
+        description: Created tag / release name
+        value: ${{ jobs.create-release.outputs.tag }}
+      release-url:
+        description: URL of the created GitHub release
+        value: ${{ jobs.create-release.outputs.release-url }}
+      publish-target:
+        description: Target the artifacts were published to (maven-central or github)
+        value: ${{ jobs.check-publishing.outputs.publish-target }}
     secrets:
       GPG_KEY:
         required: false
@@ -31,18 +52,33 @@ on:
 
 # Fixed workflow settings, not caller inputs.
 env:
-  RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+  RELEASE_TAG: ${{ inputs.version }}
+  # VERSION_REGEX only allows "-suffix" as addition, so a "-" marks a pre-release / test publish
+  PUBLISH_TYPE: ${{ contains(inputs.version, '-') && 'test' || 'release' }}
   JAVA_DISTRIBUTION: "temurin"
+  VERSION_REGEX: '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+  # tags of previous releases may use a "v" prefix
+  RELEASE_TAG_REGEX: '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+  FILTER_OUT_DUPLICATE_COMMITS: "true"
+  COMMITS_HEADING: "## ✨ Changes"
+  # Each non-empty line is a Python regular expression matched against a commit subject.
+  COMMIT_MESSAGE_EXCLUDE_REGEX: |
+    ^Merge branch
+    ^[. ]+$
+    (?i)\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]
 
 permissions:
   contents: read
 
+concurrency:
+  group: publish-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   check-publishing:
-    name: Check publish configuration
+    name: "Check ${{ inputs.version }} (${{ contains(inputs.version, '-') && 'test / pre-release' || 'release' }})"
     runs-on: ubuntu-latest
     outputs:
-      publish-enabled: ${{ steps.read-config.outputs.publish-enabled }}
       publish-target: ${{ steps.read-config.outputs.publish-target }}
       maven-central-enabled: ${{ steps.read-config.outputs.maven-central-enabled }}
       github-enabled: ${{ steps.read-config.outputs.github-enabled }}
@@ -51,28 +87,147 @@ jobs:
       target-repository: ${{ steps.read-config.outputs.target-repository }}
       target-branch: ${{ steps.read-config.outputs.target-branch }}
       target-path: ${{ steps.read-config.outputs.target-path }}
+      last-release: ${{ steps.validate-version.outputs.last-release }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Read publishing settings
         id: read-config
         uses: MFlisar/kmp-devtools/.github/actions/read-config@main
         with:
           config-file: ${{ inputs.config-file }}
+          publish-type: ${{ env.PUBLISH_TYPE }}
+
+      - name: Show publish plan
+        shell: bash
+        env:
+          PUBLISH_TARGET: ${{ steps.read-config.outputs.publish-target }}
+          GROUP_ID: ${{ steps.read-config.outputs.group-id }}
+          TARGET_REPOSITORY: ${{ steps.read-config.outputs.target-repository }}
+          TARGET_BRANCH: ${{ steps.read-config.outputs.target-branch }}
+          TARGET_PATH: ${{ steps.read-config.outputs.target-path }}
+        run: |
+          set -euo pipefail
+          if [[ "$PUBLISH_TYPE" == "test" ]]; then
+            mode="TEST (pre-release)"
+            target_key="publish.test-target"
+          else
+            mode="RELEASE"
+            target_key="publish.release-target"
+          fi
+          case "$PUBLISH_TARGET" in
+            maven-central) destination="Maven Central (group $GROUP_ID)" ;;
+            github)        destination="GitHub Maven repository $TARGET_REPOSITORY@$TARGET_BRANCH:/${TARGET_PATH}" ;;
+            *)             destination="nothing ($target_key is '$PUBLISH_TARGET')" ;;
+          esac
+
+          plan="$mode $RELEASE_TAG -> $PUBLISH_TARGET"
+          echo "::notice title=Publish plan::$plan"
+          echo "Version:      $RELEASE_TAG"
+          echo "Mode:         $mode"
+          echo "Config key:   $target_key = $PUBLISH_TARGET"
+          echo "Destination:  $destination"
+          echo "Commit:       $GITHUB_SHA ($GITHUB_REF_NAME)"
+
+          {
+            echo "## 🚀 Publish plan: $RELEASE_TAG"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Version | \`$RELEASE_TAG\` |"
+            echo "| Mode | **$mode** |"
+            echo "| Target | \`$target_key\` = \`$PUBLISH_TARGET\` |"
+            echo "| Destination | $destination |"
+            echo "| GitHub release | $([[ "$PUBLISH_TYPE" == "test" ]] && echo "pre-release" || echo "release (latest)") |"
+            echo "| Commit | \`$GITHUB_SHA\` (\`$GITHUB_REF_NAME\`) |"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate version
+        id: validate-version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_TARGET: ${{ steps.read-config.outputs.publish-target }}
+        run: |
+          set -euo pipefail
+
+          last_release="$(
+            gh release list --exclude-drafts --limit 1000 --json tagName --jq '.[].tagName' |
+              python3 -c '
+          import os, re, sys
+          pattern = re.compile(os.environ["RELEASE_TAG_REGEX"])
+          def key(tag):
+              m = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+.*)?", tag)
+              pre = m.group(4)
+              pre_key = tuple((0, int(p), "") if p.isdigit() else (1, 0, p.casefold()) for p in re.findall(r"[0-9]+|[A-Za-z]+", pre or ""))
+              return (tuple(int(m.group(i)) for i in (1, 2, 3)), int(pre is None), pre_key)
+          tags = [t for t in sys.stdin.read().split() if pattern.fullmatch(t)]
+          print(max(tags, key=key) if tags else "")
+          '
+          )"
+          echo "last-release=$last_release" >> "$GITHUB_OUTPUT"
+
+          errors=()
+          if [[ ! "$RELEASE_TAG" =~ $VERSION_REGEX ]]; then
+            errors+=("Version '$RELEASE_TAG' is invalid; expected X.Y.Z or X.Y.Z-suffix (e.g. 1.0.0, 1.1.0-beta01).")
+          else
+            if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+              errors+=("Tag '$RELEASE_TAG' already exists.")
+            fi
+            if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+              errors+=("Release '$RELEASE_TAG' already exists.")
+            fi
+            if [[ -n "$last_release" ]]; then
+              is_greater="$(python3 - "$RELEASE_TAG" "$last_release" <<'PY'
+          import re, sys
+          def key(tag):
+              m = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+.*)?", tag)
+              pre = m.group(4)
+              pre_key = tuple((0, int(p), "") if p.isdigit() else (1, 0, p.casefold()) for p in re.findall(r"[0-9]+|[A-Za-z]+", pre or ""))
+              return (tuple(int(m.group(i)) for i in (1, 2, 3)), int(pre is None), pre_key)
+          print("true" if key(sys.argv[1]) > key(sys.argv[2]) else "false")
+          PY
+              )"
+              if [[ "$is_greater" != "true" ]]; then
+                errors+=("Version '$RELEASE_TAG' must be greater than the last release '$last_release'.")
+              fi
+            fi
+          fi
+          if [[ "$PUBLISH_TARGET" == "none" ]]; then
+            errors+=("publish.$PUBLISH_TYPE-target is 'none'; nothing to publish for type '$PUBLISH_TYPE'.")
+          fi
+
+          {
+            echo "### 🔎 Version check"
+            echo
+            echo "- Last release: \`${last_release:-–}\` → new version \`$RELEASE_TAG\`"
+            if (( ${#errors[@]} > 0 )); then
+              echo
+              echo "### ❌ Validation failed"
+              printf -- '- %s\n' "${errors[@]}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Last release: ${last_release:-<none>}"
+          if (( ${#errors[@]} > 0 )); then
+            for error in "${errors[@]}"; do
+              echo "::error::$error"
+            done
+            exit 1
+          fi
 
       - name: Validate publishing credentials
-        if: ${{ steps.read-config.outputs.publish-enabled == 'true' }}
         env:
           TARGET_REPOSITORY_TOKEN: ${{ secrets.TARGET_REPOSITORY_TOKEN }}
           GPG_KEY: ${{ secrets.GPG_KEY }}
           GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          PUBLISH_ENABLED: ${{ steps.read-config.outputs.publish-enabled }}
           PUBLISH_TARGET: ${{ steps.read-config.outputs.publish-target }}
-          MAVEN_CENTRAL_ENABLED: ${{ steps.read-config.outputs.maven-central-enabled }}
-          GITHUB_ENABLED: ${{ steps.read-config.outputs.github-enabled }}
           JAVA_VERSION: ${{ steps.read-config.outputs.java-version }}
         run: |
           set -euo pipefail
@@ -88,7 +243,7 @@ jobs:
           missing_credentials=false
           for secret in "${required_secrets[@]}"; do
             if [[ -z "${!secret}" ]]; then
-              echo "::error::$secret is required for publish.target=$PUBLISH_TARGET."
+              echo "::error::$secret is required for publish target $PUBLISH_TARGET."
               missing_credentials=true
             fi
           done
@@ -96,14 +251,12 @@ jobs:
             exit 1
           fi
 
-          echo "Publishing enabled: $PUBLISH_ENABLED"
+          echo "Version: $RELEASE_TAG"
+          echo "Publish type: $PUBLISH_TYPE"
           echo "Publish target: $PUBLISH_TARGET"
-          echo "Maven Central publishing enabled: $MAVEN_CENTRAL_ENABLED"
-          echo "GitHub publishing enabled: $GITHUB_ENABLED"
           echo "Java version: $JAVA_VERSION"
 
       - name: Set up Java
-        if: ${{ steps.read-config.outputs.publish-enabled == 'true' }}
         uses: actions/setup-java@v6
         with:
           java-version: ${{ steps.read-config.outputs.java-version }}
@@ -111,12 +264,10 @@ jobs:
           cache: 'gradle'
 
       - name: Setup Gradle
-        if: ${{ steps.read-config.outputs.publish-enabled == 'true' }}
         uses: gradle/actions/setup-gradle@v6
 
       - name: Detect required publish runner
         id: detect-runner
-        if: ${{ steps.read-config.outputs.publish-enabled == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -132,7 +283,6 @@ jobs:
   publish-library:
     name: Build and publish artifacts
     needs: check-publishing
-    if: ${{ needs.check-publishing.outputs.publish-enabled == 'true' }}
     runs-on: ${{ needs.check-publishing.outputs.publish-runner }}
 
     steps:
@@ -169,7 +319,8 @@ jobs:
               ;;
           esac
 
-          echo "Release tag: $RELEASE_TAG"
+          echo "Version: $RELEASE_TAG"
+          echo "Publish type: $PUBLISH_TYPE"
           echo "Gradle publishing tasks: ${publish_tasks[*]}"
           CI=true ./gradlew "${publish_tasks[@]}" --no-daemon --parallel
         env:
@@ -180,6 +331,30 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSWORD }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+
+      - name: Add published artifacts to summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          artifacts = set()
+          for pom in Path(".").rglob("build/publications/*/pom-default.xml"):
+              root = ElementTree.parse(pom).getroot()
+              ns = {"m": root.tag[1:].split("}")[0]} if root.tag.startswith("{") else {}
+              find = (lambda tag: root.findtext(f"m:{tag}", namespaces=ns)) if ns else root.findtext
+              artifacts.add(f"{find('groupId')}:{find('artifactId')}:{find('version')}")
+
+          print("### 📦 Published artifacts")
+          print()
+          if artifacts:
+              for artifact in sorted(artifacts):
+                  print(f"- `{artifact}`")
+          else:
+              print("_No generated POM files found._")
+          PY
 
       - name: Collect Maven artifacts
         if: ${{ needs.check-publishing.outputs.github-enabled == 'true' }}
@@ -389,3 +564,93 @@ jobs:
 
           git commit -m "Publish $RELEASE_VERSION"
           git push origin "$TARGET_BRANCH"
+
+  create-release:
+    name: Create tag and GitHub release
+    needs: [check-publishing, publish-library]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.create.outputs.tag }}
+      release-url: ${{ steps.create.outputs.release-url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Create release with sorted commit list
+        id: create
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          commits_file="$RUNNER_TEMP/release-commits.txt"
+          notes_file="$RUNNER_TEMP/release-notes.md"
+
+          previous_release_tag="$(
+            git tag --merged HEAD --sort=-version:refname |
+              python3 -c 'import os, re, sys; pattern = re.compile(os.environ["RELEASE_TAG_REGEX"]); tags = sys.stdin.read().splitlines(); print(next((tag for tag in tags if pattern.fullmatch(tag)), ""))'
+          )"
+
+          if [[ -n "$previous_release_tag" ]]; then
+            git log --format=%s "$previous_release_tag..HEAD" > "$commits_file"
+          else
+            git log --format=%s HEAD > "$commits_file"
+          fi
+
+          python3 - "$commits_file" "$notes_file" <<'PY'
+          import os
+          import pathlib
+          import re
+          import sys
+
+          source_path, output_path = sys.argv[1:]
+          exclusions = [
+              re.compile(pattern.strip())
+              for pattern in os.environ["COMMIT_MESSAGE_EXCLUDE_REGEX"].splitlines()
+              if pattern.strip()
+          ]
+          messages = []
+          for message in pathlib.Path(source_path).read_text().splitlines():
+              message = message.strip()
+              if message and not any(pattern.search(message) for pattern in exclusions):
+                  messages.append(message)
+
+          messages.sort(key=str.casefold)
+          if os.environ["FILTER_OUT_DUPLICATE_COMMITS"].strip().lower() == "true":
+              unique_commits = []
+              seen = set()
+              for message in messages:
+                  normalized = message.casefold()
+                  if normalized not in seen:
+                      seen.add(normalized)
+                      unique_commits.append(message)
+              messages = unique_commits
+
+          notes = ""
+          if messages:
+              notes += "<!-- release-commits:start -->\n"
+              notes += os.environ["COMMITS_HEADING"] + "\n"
+              notes += "".join(f"* {message}\n" for message in messages)
+              notes += "<!-- release-commits:end -->\n"
+          pathlib.Path(output_path).write_text(notes)
+          PY
+
+          release_args=(--target "$GITHUB_SHA" --title "$RELEASE_TAG" --notes-file "$notes_file")
+          if [[ "$PUBLISH_TYPE" == "test" ]]; then
+            release_args+=(--prerelease --latest=false)
+          fi
+          release_url="$(gh release create "$RELEASE_TAG" "${release_args[@]}")"
+
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "release-url=$release_url" >> "$GITHUB_OUTPUT"
+          {
+            echo "### 🏷️ Release"
+            echo
+            echo "- Release: [$RELEASE_TAG]($release_url)$([[ "$PUBLISH_TYPE" == "test" ]] && echo " (pre-release)")"
+            echo "- Previous release tag: \`${previous_release_tag:-–}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

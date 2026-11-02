@@ -37,18 +37,17 @@ muss noch auflösbar sein, damit die automatische Synchronisierung ausgeführt w
 Die folgenden Workflows werden im Consumer-Projekt auf Job-Ebene über `uses` aufgerufen:
 
 Fertige Consumer-Vorlagen heißen `delegating-*.yml`, liegen unter `files/workflows` und referenzieren Version
-`9.0.5`. Kopiere die vier YAML-Dateien nach `.github/workflows` im Library-Projekt.
+`9.0.5`. Kopiere die YAML-Dateien nach `.github/workflows` im Library-Projekt.
 Pages und Markdown-Dokumentation laufen bei Pushes auf `main` oder `master`;
-Publishing und Release Notes beim Veröffentlichen eines Releases.
+Publishing wird manuell über „Run workflow“ gestartet und erstellt das Release selbst.
 
 | Workflow | Zweck | Erforderliche Berechtigungen |
 |---|---|---|
-| `reuseable-publish.yml` | Veröffentlicht je nach `publish.target` auf Maven Central oder in einem GitHub-Maven-Repository; `none` überspringt Publishing. | `contents: read` |
+| `reuseable-publish.yml` | Manuell mit Input `version`: `X.Y.Z` veröffentlicht über `publish.release-target`, `X.Y.Z-suffix` über `publish.test-target` (Maven Central oder GitHub-Maven-Repository); danach Tag + GitHub Release (mit Suffix als Pre-Release) inkl. sortierter Commit-Liste. | `contents: write` |
 | `reuseable-update-github-pages.yml` | Baut Dokka und konfigurierte Wasm-Demos und veröffentlicht GitHub Pages. | `contents: read`, `pages: write`, `id-token: write` |
 | `reuseable-update-markdown-docs.yml` | Aktualisiert Markdown-Dokumentation, prüft Links und pusht Änderungen. | `contents: write` |
-| `reuseable-update-tag-release-notes.yml` | Ergänzt bestehende Release Notes um die sortierte Commit-Liste. | `contents: write` |
 
-Der einzige Input ist `config-file`: ein Pfad relativ zum Root des Consumer-Projekts,
+Gemeinsamer Input ist `config-file`: ein Pfad relativ zum Root des Consumer-Projekts,
 standardmäßig `.config.yml`. Ohne `with` wird dieser Standard verwendet. Projektwerte
 wie die Java-Version werden daraus gelesen. Die festen `env`-Werte bleiben im Workflow
 sichtbar, sind aber keine aufrufbaren Einstellungen; sie zeigen auch, welche Werte
@@ -76,20 +75,61 @@ jobs:
       config-file: .config.yml
 ```
 
-Trigger und optional `run-name` definiert der Consumer. Publishing wird üblicherweise
-bei `release: types: [published]` aufgerufen. Für Maven Central benötigt der Publishing-Workflow
+Trigger und optional `run-name` definiert der Consumer. Für Maven Central benötigt der Publishing-Workflow
 `GPG_KEY`, `GPG_PASSWORD`, `MAVEN_CENTRAL_USERNAME` und `MAVEN_CENTRAL_PASSWORD`,
 die der Aufrufer explizit über `secrets` oder über `secrets: inherit` weitergibt.
 Die Publishing-Vorlage verwendet `secrets: inherit` (innerhalb desselben Benutzers,
 derselben Organisation oder desselben Enterprise). Für andere Aufrufer werden
-die benötigten Secrets explizit zugeordnet. Die anderen drei Vorlagen benötigen
+die benötigten Secrets explizit zugeordnet. Die anderen Vorlagen benötigen
 keine Secret-Weitergabe; `GITHUB_TOKEN` steht automatisch zur Verfügung.
-Für `publish.target: github` wird stattdessen `TARGET_REPOSITORY_TOKEN` mit
+Für das Ziel `github` wird stattdessen `TARGET_REPOSITORY_TOKEN` mit
 Schreibzugriff auf das konfigurierte Ziel-Repository benötigt.
-Für Release Notes muss bereits ein Release zum aktuellen Tag existieren; bei einem
-Tag-Push muss der Consumer dessen Erstellung vor dem Aufruf sicherstellen.
 Für GitHub Pages muss das Consumer-Repository für die Bereitstellung über GitHub
 Actions eingerichtet sein.
+
+### Publishing (manuell)
+
+Ein reusable Workflow kann nicht direkt in der UI gestartet werden; der Consumer
+legt dafür einen Workflow mit `workflow_dispatch` an:
+
+```yaml
+name: Publish
+run-name: "Publish ${{ inputs.version }} (${{ contains(inputs.version, '-') && 'test / pre-release' || 'release' }})"
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version: X.Y.Z = release (release-target), X.Y.Z-suffix = pre-release (test-target)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    uses: MFlisar/kmp-devtools/.github/workflows/reuseable-publish.yml@main
+    with:
+      version: ${{ inputs.version }}
+    secrets: inherit
+```
+
+Unter *Actions → Publish → Run workflow* werden nur Branch und `version` abgefragt.
+Der Typ ergibt sich aus der Version: `X.Y.Z` (jede Stelle beliebig viele Ziffern) ist ein
+Release über `publish.release-target`, `X.Y.Z-suffix` (z.B. `1.1.0-beta01`) ein
+Pre-Release über `publish.test-target`. Der erste Schritt „Show publish plan“ gibt
+Modus, Ziel und konkrete Destination im Log, als Notice und in der Job Summary aus.
+Vor dem Publishing wird geprüft, dass die Version eines dieser Formate hat,
+Tag und Release noch nicht existieren, die Version größer als das letzte Release ist
+und das gewählte Ziel nicht `none` ist. Danach werden Tag und GitHub Release `version`
+auf dem Commit des gewählten Branches erstellt (Pre-Release bei Suffix) und die
+sortierte Commit-Liste seit dem letzten Release-Tag als Release Notes eingetragen.
+Die Job Summary des Laufs zeigt außerdem das letzte Release, veröffentlichte
+Artefakte und den Link zum Release. Als Outputs stehen `tag`, `release-url` und
+`publish-target` zur Verfügung.
+
+Gradle wählt das Ziel über die Umgebungsvariable `PUBLISH_TYPE` (`release`/`test`);
+ohne diese Variable (z.B. lokal) wird `publish.release-target` verwendet.
 
 Die Workflows checken das Consumer-Repository aus und verwenden zentral
 `MFlisar/kmp-devtools/.github/actions/read-config@main`; eine lokale Kopie der Action
@@ -103,7 +143,7 @@ Die Datei enthält die projektweiten Angaben für Publishing, Module und die Dok
 
 | Abschnitt | Inhalt |
 |---|---|
-| `publish` | `group-id`, Publishing-Ziel (`none`, `maven-central` oder `github`) und bei GitHub die Angaben `user`, `repo`, `branch` und `path`. |
+| `publish` | `group-id`, Publishing-Ziele `release-target` und `test-target` (jeweils `none`, `maven-central` oder `github`; `test-target` ist optional, Standard `none`) und bei GitHub die Angaben `user`, `repo`, `branch` und `path`. Die README-Generierung verwendet nur `release-target`. |
 | `config` | `java-version` sowie `developer` mit Name, E-Mail, Maven-ID und GitHub-Benutzername. |
 | `project` | Projekt-Namespace, Repository-Name, Veröffentlichungsjahr (`release`) und Lizenz mit Name und Repository-Pfad. |
 | `apps` | Liste der Apps mit `name`, `namespace`, `version-name`, `main-path` und `target-paths`. Der optionale Abschnitt `publish` mit `path`, `description` und `target-path` aktiviert die Veröffentlichung der App als Demo; GitHub Pages unterstützt derzeit `target-path`-Werte, die mit `web` enden. Der README-Abschnitt „Demo“ verlinkt auf `main-path`. |
@@ -111,4 +151,4 @@ Die Datei enthält die projektweiten Angaben für Publishing, Module und die Dok
 | `documentation` | Dokumentationsordner, Ordner für Partials und Screenshots sowie optional der Pfad zum Haupt-Screenshot. |
 | `settings` | Optionale Einstellungen; `log-dependencies` ist standardmäßig `false`. |
 
-Die obersten Abschnitte `publish`, `config`, `apps`, `project`, `modules` und `documentation` sind erforderlich. `publish.github` wird benötigt, wenn `publish.target: github` gesetzt ist. Bei Modulen sind `plugin` und `internal` optionale Flags; bei `documentation` ist `main-screenshot-path` optional.
+Die obersten Abschnitte `publish`, `config`, `apps`, `project`, `modules` und `documentation` sind erforderlich. `publish.github` wird benötigt, wenn `release-target` oder `test-target` `github` ist. Das frühere Feld `publish.target` wird nicht mehr unterstützt. Bei Modulen sind `plugin` und `internal` optionale Flags; bei `documentation` ist `main-screenshot-path` optional.

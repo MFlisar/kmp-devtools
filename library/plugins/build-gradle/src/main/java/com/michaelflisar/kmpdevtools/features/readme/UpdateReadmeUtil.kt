@@ -168,10 +168,10 @@ object UpdateReadmeUtil {
             }
 
         // 3) create header replacement
-        val imageMavenCentral = if (config.publish.target == Config.Publish.Target.MAVEN_CENTRAL) {
+        val imageMavenCentral = if (config.publish.releaseTarget == Config.Publish.Target.MAVEN_CENTRAL) {
             ReadmeDefaults.imageMavenCentral(config)
         } else null
-        val imageGithubMaven = if (config.publish.target == Config.Publish.Target.GITHUB) {
+        val imageGithubMaven = if (config.publish.releaseTarget == Config.Publish.Target.GITHUB) {
             ReadmeDefaults.imageGithubMaven(config.publish.requireGithub())
         } else null
 
@@ -295,7 +295,7 @@ object UpdateReadmeUtil {
         }
 
         val setupAddRepository = buildString {
-            if (config.publish.target == Config.Publish.Target.GITHUB) {
+            if (config.publish.releaseTarget == Config.Publish.Target.GITHUB) {
                 val github = config.publish.requireGithub()
 
                 appendLine("<b>This library is not published on maven central</b>")
