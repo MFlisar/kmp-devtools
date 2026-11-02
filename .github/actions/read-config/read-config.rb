@@ -37,11 +37,22 @@ publish_type = config_value(ENV.fetch("PUBLISH_TYPE", "release"))
 publish_type = "release" if publish_type.empty?
 abort "publish-type must be one of: release, test." unless %w[release test].include?(publish_type)
 publish_target = publish_type == "test" ? test_target : release_target
+publish_target_source = "publish.#{publish_type}-target"
+
+target_override = config_value(ENV.fetch("PUBLISH_TARGET_OVERRIDE", "auto"))
+target_override = "auto" if target_override.empty?
+unless %w[auto maven-central github].include?(target_override)
+  abort "target must be one of: auto, maven-central, github."
+end
+unless target_override == "auto"
+  publish_target = target_override
+  publish_target_source = "workflow input"
+end
 
 publish_enabled = publish_target != "none"
 maven_central_enabled = publish_target == "maven-central"
 github_enabled = publish_target == "github"
-github_required = [release_target, test_target].include?("github")
+github_required = [release_target, test_target, publish_target].include?("github")
 java_version = config_value(general["java-version"])
 abort "config.java-version must be set." if java_version.empty?
 
@@ -113,6 +124,7 @@ outputs = {
   "publish-enabled" => publish_enabled,
   "publish-type" => publish_type,
   "publish-target" => publish_target,
+  "publish-target-source" => publish_target_source,
   "release-target" => release_target,
   "test-target" => test_target,
   "group-id" => config_value(publish["group-id"]),

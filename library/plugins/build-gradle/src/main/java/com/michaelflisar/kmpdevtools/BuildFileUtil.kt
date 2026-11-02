@@ -43,6 +43,7 @@ object BuildFileUtil {
      *
      * The destination is `publish.release-target` or `publish.test-target`, depending on [publishType]
      * (defaults to the `PUBLISH_TYPE` environment variable, or `release` if unset).
+     * [targetOverride] (defaults to the `PUBLISH_TARGET` environment variable, `auto` = no override) replaces it.
      */
     fun setupMavenPublish(
         libraryModuleConfig: LibraryModuleConfig.Library,
@@ -54,10 +55,11 @@ object BuildFileUtil {
         sign: Boolean = System.getenv("CI")?.toBoolean() == true,
         version: String = System.getenv("TAG") ?: System.getenv("VERSION") ?: "LOCAL-SNAPSHOT",
         publishType: Config.Publish.Type = Config.Publish.Type.fromEnv(),
+        targetOverride: Config.Publish.Target? = Config.Publish.Target.fromEnv(),
     ) {
         val config = libraryModuleConfig.config
         val publish = config.publish
-        val target = publish.target(publishType)
+        val target = targetOverride ?: publish.target(publishType)
         when (target) {
             Config.Publish.Target.NONE -> return
             Config.Publish.Target.MAVEN_CENTRAL -> Unit

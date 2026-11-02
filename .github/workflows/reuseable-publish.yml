@@ -4,6 +4,7 @@
 # - the publish type is derived from the version:
 #   X.Y.Z         => "release": publish.release-target, normal release
 #   X.Y.Z-suffix  => "test":    publish.test-target, pre-release
+# - optional input "target" (auto | maven-central | github) overrides the configured target
 # - the first step prints the publish plan (type + destination) to the log and the job summary
 # - validates the version (SemVer, not yet released, greater than the last release)
 # - after publishing creates the tag + GitHub release (test = pre-release) with a sorted commit list
@@ -23,6 +24,11 @@ on:
         description: "Version, also used as tag and release name: X.Y.Z = release (publish.release-target), X.Y.Z-suffix = pre-release (publish.test-target)"
         required: true
         type: string
+      target:
+        description: "Publish target: auto (configured release-target / test-target), maven-central or github"
+        required: false
+        type: string
+        default: auto
       config-file:
         description: Path to the config file, relative to the consumer repository root
         required: false
@@ -100,11 +106,13 @@ jobs:
         with:
           config-file: ${{ inputs.config-file }}
           publish-type: ${{ env.PUBLISH_TYPE }}
+          publish-target: ${{ inputs.target }}
 
       - name: Show publish plan
         shell: bash
         env:
           PUBLISH_TARGET: ${{ steps.read-config.outputs.publish-target }}
+          PUBLISH_TARGET_SOURCE: ${{ steps.read-config.outputs.publish-target-source }}
           GROUP_ID: ${{ steps.read-config.outputs.group-id }}
           TARGET_REPOSITORY: ${{ steps.read-config.outputs.target-repository }}
           TARGET_BRANCH: ${{ steps.read-config.outputs.target-branch }}
@@ -113,11 +121,10 @@ jobs:
           set -euo pipefail
           if [[ "$PUBLISH_TYPE" == "test" ]]; then
             mode="TEST (pre-release)"
-            target_key="publish.test-target"
           else
             mode="RELEASE"
-            target_key="publish.release-target"
           fi
+          target_key="$PUBLISH_TARGET_SOURCE"
           case "$PUBLISH_TARGET" in
             maven-central) destination="Maven Central (group $GROUP_ID)" ;;
             github)        destination="GitHub Maven repository $TARGET_REPOSITORY@$TARGET_BRANCH:/${TARGET_PATH}" ;;
@@ -128,7 +135,7 @@ jobs:
           echo "::notice title=Publish plan::$plan"
           echo "Version:      $RELEASE_TAG"
           echo "Mode:         $mode"
-          echo "Config key:   $target_key = $PUBLISH_TARGET"
+          echo "Target from:  $target_key = $PUBLISH_TARGET"
           echo "Destination:  $destination"
           echo "Commit:       $GITHUB_SHA ($GITHUB_REF_NAME)"
 

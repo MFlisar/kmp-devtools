@@ -93,15 +93,30 @@ data class Config(
         }
 
         @Serializable
-        enum class Target {
+        enum class Target(val id: String) {
             @SerialName("none")
-            NONE,
+            NONE("none"),
 
             @SerialName("maven-central")
-            MAVEN_CENTRAL,
+            MAVEN_CENTRAL("maven-central"),
 
             @SerialName("github")
-            GITHUB,
+            GITHUB("github");
+
+            companion object {
+                const val ENV_NAME = "PUBLISH_TARGET"
+
+                /**
+                 * Reads an optional target override from the [ENV_NAME] environment variable;
+                 * returns null if unset, empty or "auto".
+                 */
+                fun fromEnv(): Target? {
+                    val value = System.getenv(ENV_NAME)?.trim()
+                    if (value.isNullOrEmpty() || value.equals("auto", ignoreCase = true)) return null
+                    return entries.find { it.id.equals(value, ignoreCase = true) }
+                        ?: error("Invalid publish target '$value' in $ENV_NAME; expected one of: auto, ${entries.joinToString { it.id }}")
+                }
+            }
         }
 
         @Serializable

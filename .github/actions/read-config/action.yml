@@ -9,6 +9,10 @@ inputs:
     description: Publish type (release or test); selects publish.release-target or publish.test-target
     required: false
     default: release
+  publish-target:
+    description: "Publish target override: auto (use the configured target for publish-type), maven-central or github"
+    required: false
+    default: auto
 outputs:
   publish-enabled:
     description: Whether publishing is enabled for the selected publish type
@@ -17,8 +21,11 @@ outputs:
     description: Selected publish type (release or test)
     value: ${{ steps.parse.outputs.publish-type }}
   publish-target:
-    description: Publishing target for the selected publish type
+    description: Publishing target for the selected publish type (or the override)
     value: ${{ steps.parse.outputs.publish-target }}
+  publish-target-source:
+    description: Where the publish target comes from (publish.release-target, publish.test-target or workflow input)
+    value: ${{ steps.parse.outputs.publish-target-source }}
   release-target:
     description: Configured publish.release-target
     value: ${{ steps.parse.outputs.release-target }}
@@ -66,4 +73,5 @@ runs:
       env:
         CONFIG_FILE: ${{ inputs.config-file }}
         PUBLISH_TYPE: ${{ inputs.publish-type }}
+        PUBLISH_TARGET_OVERRIDE: ${{ inputs.publish-target }}
       run: ruby "${{ github.action_path }}/read-config.rb"

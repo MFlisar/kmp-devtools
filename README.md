@@ -102,6 +102,12 @@ on:
         description: "Version: X.Y.Z = release (release-target), X.Y.Z-suffix = pre-release (test-target)"
         required: true
         type: string
+      target:
+        description: "Target: auto = from config (release-target / test-target)"
+        required: true
+        type: choice
+        options: [auto, maven-central, github]
+        default: auto
 
 permissions:
   contents: write
@@ -111,13 +117,16 @@ jobs:
     uses: MFlisar/kmp-devtools/.github/workflows/reuseable-publish.yml@main
     with:
       version: ${{ inputs.version }}
+      target: ${{ inputs.target }}
     secrets: inherit
 ```
 
-Unter *Actions → Publish → Run workflow* werden nur Branch und `version` abgefragt.
+Unter *Actions → Publish → Run workflow* werden Branch, `version` und `target` abgefragt.
 Der Typ ergibt sich aus der Version: `X.Y.Z` (jede Stelle beliebig viele Ziffern) ist ein
 Release über `publish.release-target`, `X.Y.Z-suffix` (z.B. `1.1.0-beta01`) ein
-Pre-Release über `publish.test-target`. Der erste Schritt „Show publish plan“ gibt
+Pre-Release über `publish.test-target`. Mit `target` = `maven-central` oder `github`
+wird das konfigurierte Ziel überschrieben (für `github` muss `publish.github` gesetzt sein);
+Release/Pre-Release richtet sich weiterhin nach der Version. Der erste Schritt „Show publish plan“ gibt
 Modus, Ziel und konkrete Destination im Log, als Notice und in der Job Summary aus.
 Vor dem Publishing wird geprüft, dass die Version eines dieser Formate hat,
 Tag und Release noch nicht existieren, die Version größer als das letzte Release ist
@@ -128,8 +137,9 @@ Die Job Summary des Laufs zeigt außerdem das letzte Release, veröffentlichte
 Artefakte und den Link zum Release. Als Outputs stehen `tag`, `release-url` und
 `publish-target` zur Verfügung.
 
-Gradle wählt das Ziel über die Umgebungsvariable `PUBLISH_TYPE` (`release`/`test`);
-ohne diese Variable (z.B. lokal) wird `publish.release-target` verwendet.
+Gradle wählt das Ziel über die Umgebungsvariablen `PUBLISH_TYPE` (`release`/`test`) und
+optional `PUBLISH_TARGET` (`auto`/`maven-central`/`github`, überschreibt die Config);
+ohne diese Variablen (z.B. lokal) wird `publish.release-target` verwendet.
 
 Die Workflows checken das Consumer-Repository aus und verwenden zentral
 `MFlisar/kmp-devtools/.github/actions/read-config@main`; eine lokale Kopie der Action
