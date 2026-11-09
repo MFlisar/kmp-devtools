@@ -79,6 +79,10 @@ unter `apps.publish.url-path` konfigurierten Publish-URLs automatisch ausgeschlo
 (mit optionalem abschließendem Slash, Query oder Fragment). Die Config-Action liefert
 diese relativen Pfade als `publish-url-paths-json`; der Markdown-Workflow erzeugt
 daraus direkt vor Lychee die URL-Filter. Andere URLs werden weiterhin geprüft.
+Fuer `central.sonatype.com` begrenzt eine im Runner-Temp-Verzeichnis erzeugte
+Lychee-Konfiguration die Parallelitaet auf eine Anfrage und den Mindestabstand
+auf zwei Sekunden. HTTP 429 bleibt ein Fehler; die Drosselung reduziert lediglich
+das Risiko einer Ratenbegrenzung.
 
 ```yaml
 name: Documentation

@@ -72,6 +72,13 @@ jobs:
           PUBLISH_URL_PATHS_JSON: ${{ steps.read-config.outputs.publish-url-paths-json }}
         run: |
           set -euo pipefail
+          lychee_config="$RUNNER_TEMP/markdown-docs-lychee.toml"
+          cat > "$lychee_config" <<'TOML'
+          [hosts."central.sonatype.com"]
+          concurrency = 1
+          request_interval = "2s"
+          TOML
+          export LYCHEE_CONFIG="$lychee_config"
           ruby -rjson -e '
             owner, repository = ENV.fetch("GITHUB_REPOSITORY").split("/", 2)
             base_url = "https://#{owner}.github.io/#{repository}"
@@ -82,7 +89,7 @@ jobs:
               "--exclude \u0027#{pattern}\u0027"
             end
             File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |output|
-              output.puts("args=#{ENV.fetch("LYCHEE_ARGS")} #{excludes.join(" ")}")
+              output.puts("args=--config \"#{ENV.fetch("LYCHEE_CONFIG")}\" #{ENV.fetch("LYCHEE_ARGS")} #{excludes.join(" ")}")
             end
           '
 
