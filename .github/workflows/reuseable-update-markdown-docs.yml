@@ -75,7 +75,7 @@ jobs:
           ruby -rjson -e '
             owner, repository = ENV.fetch("GITHUB_REPOSITORY").split("/", 2)
             base_url = "https://#{owner}.github.io/#{repository}"
-            paths = [""] + JSON.parse(ENV.fetch("PUBLISH_URL_PATHS_JSON"))
+            paths = ["", "api"] + JSON.parse(ENV.fetch("PUBLISH_URL_PATHS_JSON"))
             excludes = paths.map do |path|
               url = path.empty? ? base_url : "#{base_url}/#{path}"
               pattern = "(?i)^#{Regexp.escape(url)}/?(?:[?#].*)?$"
