@@ -43,11 +43,12 @@ Pre-Release. Vor dem Publish werden Version und erforderliche Secrets geprueft;
 nach erfolgreichem Publish entstehen Tag und Release mit sortierter Commit-Liste.
 
 Fuer Maven Central werden `GPG_KEY`, `GPG_PASSWORD`, `MAVEN_CENTRAL_USERNAME` und
-`MAVEN_CENTRAL_PASSWORD` benoetigt. Fuer `github` sind die Inputs
-`target-repository` (`owner/repository`) und `target-branch` (bestehender Branch)
-sowie das Secret `TARGET_REPOSITORY_TOKEN` mit Schreibzugriff erforderlich.
-Die Inputs sind mit `MFlisar/maven-repository`, Branch `main` und Pfad `artifacts`
-vorbelegt. `target-path` ist optional; leer bedeutet Repository-Root. Alle drei Module
+`MAVEN_CENTRAL_PASSWORD` benoetigt. Fuer `github` ist das Secret
+`TARGET_REPOSITORY_TOKEN` mit Schreibzugriff erforderlich. Das Ziel ist fest
+ueber die Workflow-Umgebungsvariablen `TARGET_REPOSITORY`
+(`MFlisar/maven-repository`), `TARGET_BRANCH` (`main`) und `TARGET_PATH` (`artifacts`)
+definiert, nicht ueber Benutzereingaben. Ein leerer `TARGET_PATH` bedeutet
+Repository-Root. Alle drei Module
 erzeugen bei `PUBLISH_TARGET=github` ein lokales Maven-Repository unter
 `build/maven-repo`, das der Workflow ins Ziel-Repository uebertraegt.
 Bestehende Versionen bleiben unveraendert; Maven-Metadaten werden zusammengefuehrt.

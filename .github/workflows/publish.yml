@@ -12,29 +12,18 @@ on:
         description: Publish target
         required: true
         type: choice
+        default: github
         options:
           - maven-central
           - github
-      target-repository:
-        description: "GitHub Maven repository (owner/repository), required for target github"
-        required: false
-        type: string
-        default: MFlisar/maven-repository
-      target-branch:
-        description: "Existing branch in the GitHub Maven repository, required for target github"
-        required: false
-        type: string
-        default: main
-      target-path:
-        description: "Relative Maven repository path (empty = repository root)"
-        required: false
-        type: string
-        default: artifacts
 
 env:
   RELEASE_TAG: ${{ inputs.version }}
   PUBLISH_TARGET: ${{ inputs.target }}
   PUBLISH_TYPE: ${{ contains(inputs.version, '-') && 'test' || 'release' }}
+  TARGET_REPOSITORY: MFlisar/maven-repository
+  TARGET_BRANCH: main
+  TARGET_PATH: artifacts
   JAVA_VERSION: "17"
   JAVA_DISTRIBUTION: "temurin"
   VERSION_REGEX: '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
@@ -66,9 +55,6 @@ jobs:
       - name: Validate destination and credentials
         shell: bash
         env:
-          TARGET_REPOSITORY: ${{ inputs.target-repository }}
-          TARGET_BRANCH: ${{ inputs.target-branch }}
-          TARGET_PATH: ${{ inputs.target-path }}
           TARGET_REPOSITORY_TOKEN: ${{ secrets.TARGET_REPOSITORY_TOKEN }}
           GPG_KEY: ${{ secrets.GPG_KEY }}
           GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
@@ -84,18 +70,18 @@ jobs:
             github)
               required_secrets=(TARGET_REPOSITORY_TOKEN)
               if [[ ! "$TARGET_REPOSITORY" =~ ^[[:alnum:]_.-]+/[[:alnum:]_.-]+$ ]]; then
-                echo "::error::target-repository must identify owner/repository."
+                echo "::error::TARGET_REPOSITORY must identify owner/repository."
                 exit 1
               fi
               if [[ -z "$TARGET_BRANCH" ]] || ! git check-ref-format --branch "$TARGET_BRANCH" >/dev/null; then
-                echo "::error::target-branch must be a valid branch name."
+                echo "::error::TARGET_BRANCH must be a valid branch name."
                 exit 1
               fi
               if [[ -n "$TARGET_PATH" ]]; then
                 if [[ ! "$TARGET_PATH" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ ]] ||
                    [[ "/$TARGET_PATH/" == *"/../"* || "/$TARGET_PATH/" == *"/./"* ]] ||
                    [[ "${TARGET_PATH%%/*}" == ".git" ]]; then
-                  echo "::error::target-path must be a relative path without empty, '.' or '..' segments or a .git root."
+                  echo "::error::TARGET_PATH must be a relative path without empty, '.' or '..' segments or a .git root."
                   exit 1
                 fi
               fi
@@ -272,8 +258,8 @@ jobs:
         if: ${{ inputs.target == 'github' }}
         uses: actions/checkout@v7
         with:
-          repository: ${{ inputs.target-repository }}
-          ref: ${{ inputs.target-branch }}
+          repository: ${{ env.TARGET_REPOSITORY }}
+          ref: ${{ env.TARGET_BRANCH }}
           token: ${{ secrets.TARGET_REPOSITORY_TOKEN }}
           path: target-repository
           fetch-depth: 0
@@ -281,8 +267,6 @@ jobs:
       - name: Copy artifacts and merge Maven metadata
         if: ${{ inputs.target == 'github' }}
         shell: bash
-        env:
-          TARGET_PATH: ${{ inputs.target-path }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -369,9 +353,6 @@ jobs:
       - name: Commit and push artifacts
         if: ${{ inputs.target == 'github' }}
         working-directory: target-repository
-        env:
-          TARGET_PATH: ${{ inputs.target-path }}
-          TARGET_BRANCH: ${{ inputs.target-branch }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
