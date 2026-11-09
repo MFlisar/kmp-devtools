@@ -37,7 +37,7 @@ env:
     (?i)\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: publish-${{ github.repository }}
@@ -47,6 +47,8 @@ jobs:
   check-publishing:
     name: Check publishing inputs
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -184,6 +186,8 @@ jobs:
     name: Build and publish artifacts
     needs: check-publishing
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
