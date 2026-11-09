@@ -1,5 +1,5 @@
 # Manual publishing without .config.yml; the destination is always selected explicitly.
-name: Publish
+name: Publish kmp-devtools
 run-name: "Publish ${{ inputs.version }} (${{ contains(inputs.version, '-') && 'test / pre-release' || 'release' }}, target: ${{ inputs.target }})"
 
 on:
