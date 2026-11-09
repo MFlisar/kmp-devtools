@@ -32,6 +32,26 @@ Das manuelle Werkzeug `updateDevTools` verwendet dieselbe Update-Logik und aktua
 zusätzlich die Soll-Version im Katalog. Die zuvor eingetragene Settings-Plugin-Version
 muss noch auflösbar sein, damit die automatische Synchronisierung ausgeführt werden kann.
 
+## Dieses Repository manuell veroeffentlichen
+
+Der lokale Workflow `.github/workflows/publish.yml` wird ausschliesslich ueber
+**Run workflow** gestartet und liest keine `.config.yml`. `version` legt Version
+und Tag fest; `target` wird explizit als `maven-central` oder `github` ausgewaehlt.
+Es gibt keinen `auto`-Modus und keine Ableitung des Ziels aus der Version.
+Ein Versionssuffix kennzeichnet lediglich das anschliessende GitHub Release als
+Pre-Release. Vor dem Publish werden Version und erforderliche Secrets geprueft;
+nach erfolgreichem Publish entstehen Tag und Release mit sortierter Commit-Liste.
+
+Fuer Maven Central werden `GPG_KEY`, `GPG_PASSWORD`, `MAVEN_CENTRAL_USERNAME` und
+`MAVEN_CENTRAL_PASSWORD` benoetigt. Fuer `github` sind die Inputs
+`target-repository` (`owner/repository`) und `target-branch` (bestehender Branch)
+sowie das Secret `TARGET_REPOSITORY_TOKEN` mit Schreibzugriff erforderlich.
+Die Inputs sind mit `MFlisar/maven-repository`, Branch `main` und Pfad `artifacts`
+vorbelegt. `target-path` ist optional; leer bedeutet Repository-Root. Alle drei Module
+erzeugen bei `PUBLISH_TARGET=github` ein lokales Maven-Repository unter
+`build/maven-repo`, das der Workflow ins Ziel-Repository uebertraegt.
+Bestehende Versionen bleiben unveraendert; Maven-Metadaten werden zusammengefuehrt.
+
 ## Wiederverwendbare GitHub-Workflows
 
 Die folgenden Workflows werden im Consumer-Projekt auf Job-Ebene über `uses` aufgerufen:

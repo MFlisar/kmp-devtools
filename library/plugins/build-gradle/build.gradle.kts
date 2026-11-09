@@ -111,10 +111,18 @@ mavenPublishing {
         }
     }
 
-    // Configure publishing to Maven Central
-    publishToMavenCentral(true)
+    // Configure the explicitly selected publishing destination.
+    if (System.getenv("PUBLISH_TARGET") != "github")
+        publishToMavenCentral(true)
 
     // Enable GPG signing for all publications
-    if (System.getenv("CI")?.toBoolean() == true)
+    if (System.getenv("CI")?.toBoolean() == true && System.getenv("PUBLISH_TARGET") != "github")
         signAllPublications()
+}
+
+if (System.getenv("PUBLISH_TARGET") == "github") {
+    publishing.repositories.maven {
+        name = "GitHub"
+        url = layout.buildDirectory.dir("maven-repo").get().asFile.toURI()
+    }
 }
