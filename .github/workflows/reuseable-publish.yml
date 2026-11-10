@@ -373,7 +373,12 @@ jobs:
 
           while IFS= read -r -d '' repository; do
             echo "Collecting artifacts from $repository"
-            rsync -a "$repository/" "$artifact_directory/"
+            rsync -a \
+              --exclude='*.sha256' \
+              --exclude='*.sha512' \
+              --exclude='*.asc.md5' \
+              --exclude='*.asc.sha1' \
+              "$repository/" "$artifact_directory/"
           done < <(find . -type d -name maven-repo -not -path './.git/*' -print0)
 
           if ! find "$artifact_directory" -type f -name '*.pom' -print -quit | grep -q .; then
@@ -441,8 +446,6 @@ jobs:
           checksum_algorithms = {
               ".md5": "md5",
               ".sha1": "sha1",
-              ".sha256": "sha256",
-              ".sha512": "sha512",
           }
 
           def version_key(version):
@@ -538,6 +541,10 @@ jobs:
               )
 
               content = target_metadata.read_bytes()
+              for suffix in (".sha256", ".sha512"):
+                  redundant_checksum = Path(str(target_metadata) + suffix)
+                  if redundant_checksum.exists():
+                      redundant_checksum.unlink()
               for suffix, algorithm in checksum_algorithms.items():
                   checksum_path = Path(str(target_metadata) + suffix)
                   source_checksum = Path(str(source_metadata) + suffix)

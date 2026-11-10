@@ -12,6 +12,7 @@ import com.michaelflisar.kmpdevtools.configs.DesktopAppConfig
 import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
 import com.michaelflisar.kmpdevtools.core.Config
 import com.michaelflisar.kmpdevtools.core.utils.ModuleUtil
+import com.vanniktech.maven.publish.Checksum
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
@@ -44,6 +45,7 @@ object BuildFileUtil {
      * The destination is `publish.release-target` or `publish.test-target`, depending on [publishType]
      * (defaults to the `PUBLISH_TYPE` environment variable, or `release` if unset).
      * [targetOverride] (defaults to the `PUBLISH_TARGET` environment variable, `auto` = no override) replaces it.
+     * Maven Central publishing keeps MD5/SHA-1 checksums and omits redundant SHA-256/SHA-512 and signature checksums.
      */
     fun setupMavenPublish(
         libraryModuleConfig: LibraryModuleConfig.Library,
@@ -77,8 +79,11 @@ object BuildFileUtil {
         ) {
             when (target) {
                 Config.Publish.Target.NONE -> Unit
-                Config.Publish.Target.MAVEN_CENTRAL ->
+                Config.Publish.Target.MAVEN_CENTRAL -> {
+                    checksums(Checksum.MD5, Checksum.SHA1)
+                    excludeSignatureChecksums()
                     publishToMavenCentral(autoReleaseOnMavenCentral(version))
+                }
 
                 Config.Publish.Target.GITHUB -> Unit
             }

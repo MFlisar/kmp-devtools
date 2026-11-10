@@ -51,7 +51,9 @@ definiert, nicht ueber Benutzereingaben. Ein leerer `TARGET_PATH` bedeutet
 Repository-Root. Alle drei Module
 erzeugen bei `PUBLISH_TARGET=github` ein lokales Maven-Repository unter
 `build/maven-repo`, das der Workflow ins Ziel-Repository uebertraegt.
-Bestehende Versionen bleiben unveraendert; Maven-Metadaten werden zusammengefuehrt.
+Bestehende Versionen bleiben unveraendert; SHA-256/SHA-512-Checksums und Checksums
+von Signaturdateien werden beim Uebertragen ausgelassen. Maven-Metadaten und ihre
+MD5/SHA-1-Checksums bleiben erhalten und werden zusammengefuehrt.
 
 ## Wiederverwendbare GitHub-Workflows
 

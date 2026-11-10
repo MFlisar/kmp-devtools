@@ -252,7 +252,12 @@ jobs:
           artifact_directory="$RUNNER_TEMP/maven-artifacts"
           mkdir -p "$artifact_directory"
           while IFS= read -r -d '' repository; do
-            rsync -a "$repository/" "$artifact_directory/"
+            rsync -a \
+              --exclude='*.sha256' \
+              --exclude='*.sha512' \
+              --exclude='*.asc.md5' \
+              --exclude='*.asc.sha1' \
+              "$repository/" "$artifact_directory/"
           done < <(find ./library -type d -name maven-repo -print0)
           if ! find "$artifact_directory" -type f -name '*.pom' -print -quit | grep -q .; then
             echo "::error::No Maven POM files were generated."
@@ -349,7 +354,11 @@ jobs:
                       node.text = value
               ElementTree.indent(root, space="  ")
               ElementTree.ElementTree(root).write(destination, encoding="UTF-8", xml_declaration=True)
-              for suffix, algorithm in {".md5": "md5", ".sha1": "sha1", ".sha256": "sha256", ".sha512": "sha512"}.items():
+              for suffix in (".sha256", ".sha512"):
+                  checksum = Path(str(destination) + suffix)
+                  if checksum.exists():
+                      checksum.unlink()
+              for suffix, algorithm in {".md5": "md5", ".sha1": "sha1"}.items():
                   checksum = Path(str(destination) + suffix)
                   if checksum.exists() or Path(str(source) + suffix).exists():
                       checksum.write_text(hashlib.new(algorithm, destination.read_bytes()).hexdigest() + "\n", encoding="ascii")
