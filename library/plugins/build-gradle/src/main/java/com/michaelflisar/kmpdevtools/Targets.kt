@@ -209,8 +209,8 @@ class Targets(
                         applicationId = appConfig.namespace
                         minSdk = androidAppConfig.minSdk.get().toInt()
                         targetSdk = androidAppConfig.targetSdk.get().toInt()
-                        versionCode = appConfig.latestRelease.number
-                        versionName = appConfig.latestRelease.name
+                        versionCode = appConfig.release.number
+                        versionName = appConfig.release.name
                         configureDefault()
                     }
 

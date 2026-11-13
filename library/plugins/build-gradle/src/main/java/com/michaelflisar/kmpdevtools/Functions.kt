@@ -9,8 +9,6 @@ import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
 import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
 import com.michaelflisar.kmpdevtools.core.Target
 import com.michaelflisar.kmpdevtools.core.Config
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.gradle.api.JavaVersion
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
@@ -205,9 +203,8 @@ fun BuildKonfigExtension.setupBuildKonfig(
     packageName.set(app.namespace)
     this.exposeObjectWithName.set(exposeObjectWithName)
     defaultConfigs {
-        buildConfigField(Type.STRING, "versionName", app.latestRelease.name)
-        buildConfigField(Type.INT, "versionCode", app.latestRelease.number.toString())
-        buildConfigField(Type.STRING, "releasesJson", Json.encodeToString(app.releases))
+        buildConfigField(Type.STRING, "versionName", app.release.name)
+        buildConfigField(Type.INT, "versionCode", app.release.number.toString())
         buildConfigField(Type.STRING, "namespace", app.namespace)
         buildConfigField(Type.STRING, "appName", app.name)
         if (isDebug != null)

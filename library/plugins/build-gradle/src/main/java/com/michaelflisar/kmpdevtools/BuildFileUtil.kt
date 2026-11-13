@@ -222,8 +222,8 @@ object BuildFileUtil {
 
                 this.minSdk = androidAppConfig.minSdk.get().toInt()
                 this.targetSdk = androidAppConfig.targetSdk.get().toInt()
-                this.versionCode = appModuleConfig.app.latestRelease.number
-                this.versionName = appModuleConfig.app.latestRelease.name
+                this.versionCode = appModuleConfig.app.release.number
+                this.versionName = appModuleConfig.app.release.name
 
                 if (generateResAppName) {
                     resValue(
@@ -295,7 +295,7 @@ object BuildFileUtil {
                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
                 packageName = appModuleConfig.app.name // entspricht dem exe Name
-                packageVersion = appModuleConfig.app.latestRelease.name
+                packageVersion = appModuleConfig.app.release.name
                 description =
                     "${appModuleConfig.app.name} - Build at ${now.format(formatter)}"
                 copyright =
@@ -370,7 +370,7 @@ object BuildFileUtil {
     ) {
         val project = appModuleConfig.project
         val appName = appModuleConfig.app.name
-        val appVersionName = appModuleConfig.app.latestRelease.name
+        val appVersionName = appModuleConfig.app.release.name
         afterEvaluate {
             project.tasks.named("bundleRelease").configure {
                 finalizedBy("extractProguardMap")
