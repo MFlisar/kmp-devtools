@@ -206,7 +206,7 @@ fun BuildKonfigExtension.setupBuildKonfig(
     this.exposeObjectWithName.set(exposeObjectWithName)
     defaultConfigs {
         buildConfigField(Type.STRING, "versionName", app.latestRelease.name)
-        buildConfigField(Type.STRING, "versionCode", app.latestRelease.number.toString())
+        buildConfigField(Type.INT, "versionCode", app.latestRelease.number.toString())
         buildConfigField(Type.STRING, "releasesJson", Json.encodeToString(app.releases))
         buildConfigField(Type.STRING, "namespace", app.namespace)
         buildConfigField(Type.STRING, "appName", app.name)
