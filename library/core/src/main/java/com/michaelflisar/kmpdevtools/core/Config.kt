@@ -155,12 +155,12 @@ data class Config(
     data class App(
         val name: String,
         val namespace: String,
-        val release: Release,
+        val version: Version,
         @SerialName("module-paths") private val modulePaths: List<String>,
         val publish: Publish? = null,
     ) {
         init {
-            require(release.number > 0) { "Release number for app '$name' must be positive" }
+            require(version.code > 0) { "Version code for app '$name' must be positive" }
         }
 
         val invariantModulePaths: List<String>
@@ -185,9 +185,9 @@ data class Config(
         }
 
         @Serializable
-        data class Release(
+        data class Version(
+            val code: Int,
             val name: String,
-            val number: Int,
         )
 
         @Serializable

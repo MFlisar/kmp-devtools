@@ -9,35 +9,35 @@ import kotlin.test.assertFailsWith
 class ConfigAppTest {
 
     @Test
-    fun readsCurrentRelease() {
+    fun readsCurrentVersion() {
         val app = Yaml.default.decodeFromString(
             Config.App.serializer(),
             """
             name: Test
             namespace: com.example.test
-            release:
+            version:
+              code: 2
               name: "2.0.0"
-              number: 2
             module-paths:
               - demo/app
             """.trimIndent()
         )
 
-        assertEquals("2.0.0", app.release.name)
-        assertEquals(2, app.release.number)
+        assertEquals("2.0.0", app.version.name)
+        assertEquals(2, app.version.code)
     }
 
     @Test
-    fun rejectsNonPositiveReleaseNumbers() {
+    fun rejectsNonPositiveVersionCodes() {
         assertFailsWith<IllegalArgumentException> {
-            app(Config.App.Release(name = "1.0.0", number = 0))
+            app(Config.App.Version(code = 0, name = "1.0.0"))
         }
     }
 
-    private fun app(release: Config.App.Release) = Config.App(
+    private fun app(version: Config.App.Version) = Config.App(
         name = "Test",
         namespace = "com.example.test",
-        release = release,
+        version = version,
         modulePaths = listOf("demo/app"),
     )
 }

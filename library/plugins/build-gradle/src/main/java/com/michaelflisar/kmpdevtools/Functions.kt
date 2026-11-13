@@ -203,8 +203,8 @@ fun BuildKonfigExtension.setupBuildKonfig(
     packageName.set(app.namespace)
     this.exposeObjectWithName.set(exposeObjectWithName)
     defaultConfigs {
-        buildConfigField(Type.STRING, "versionName", app.release.name)
-        buildConfigField(Type.INT, "versionCode", app.release.number.toString())
+        buildConfigField(Type.STRING, "versionName", app.version.name)
+        buildConfigField(Type.INT, "versionCode", app.version.code.toString())
         buildConfigField(Type.STRING, "namespace", app.namespace)
         buildConfigField(Type.STRING, "appName", app.name)
         if (isDebug != null)

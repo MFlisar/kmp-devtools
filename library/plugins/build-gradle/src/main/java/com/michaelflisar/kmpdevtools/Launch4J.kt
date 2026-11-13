@@ -117,8 +117,8 @@ object Launch4J {
             icon.set(project.file(desktopAppConfig.ico).absolutePath)
             outfile.set(outputFileName)
             productName.set(appModuleConfig.app.name)
-            version.set(appModuleConfig.app.release.name)
-            textVersion.set(appModuleConfig.app.release.name)
+            version.set(appModuleConfig.app.version.name)
+            textVersion.set(appModuleConfig.app.version.name)
             companyName.set(appModuleConfig.config.developer.name)
             description = "${appModuleConfig.app.name} - Build at ${now.format(formatter)}"
             copyright.set("©${now.year} ${appModuleConfig.config.developer.name}. All rights reserved.")
