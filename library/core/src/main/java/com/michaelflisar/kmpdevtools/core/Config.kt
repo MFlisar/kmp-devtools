@@ -155,10 +155,21 @@ data class Config(
     data class App(
         val name: String,
         val namespace: String,
-        @SerialName("version-name") val versionName: String,
+        val releases: List<Release>,
         @SerialName("module-paths") private val modulePaths: List<String>,
         val publish: Publish? = null,
     ) {
+        init {
+            require(releases.isNotEmpty()) { "App '$name' must define at least one release" }
+            require(releases.all { it.number > 0 }) { "Release numbers for app '$name' must be positive" }
+            require(releases.map { it.number }.distinct().size == releases.size) {
+                "Release numbers for app '$name' must be unique"
+            }
+        }
+
+        val latestRelease: Release
+            get() = releases.maxBy { it.number }
+
         val invariantModulePaths: List<String>
             get() = modulePaths.map { it.invariantPath() }
 
@@ -179,6 +190,12 @@ data class Config(
             }
             return commonSegments.joinToString("/")
         }
+
+        @Serializable
+        data class Release(
+            val name: String,
+            val number: Int,
+        )
 
         @Serializable
         data class Publish(

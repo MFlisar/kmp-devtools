@@ -3,8 +3,6 @@ package com.michaelflisar.kmpdevtools
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
 import com.android.build.gradle.internal.crash.afterEvaluate
-import com.michaelflisar.composechangelog.format.ChangelogVersionFormatter
-import com.michaelflisar.composechangelog.format.DefaultVersionFormatter
 import com.michaelflisar.kmpdevtools.configs.AndroidAppConfig
 import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
@@ -207,7 +205,6 @@ object BuildFileUtil {
         buildConfig: Boolean,
         checkDebugKeyStoreProperty: Boolean,
         setupBuildTypesDebugAndRelease: Boolean,
-        versionFormatter: ChangelogVersionFormatter = DefaultVersionFormatter(DefaultVersionFormatter.Format.MajorMinorPatch),
         buildTypeDebugSuffix: String = ".debug",
     ) {
         appModuleConfig.project.extensions.configure(ApplicationExtension::class.java) {
@@ -225,8 +222,8 @@ object BuildFileUtil {
 
                 this.minSdk = androidAppConfig.minSdk.get().toInt()
                 this.targetSdk = androidAppConfig.targetSdk.get().toInt()
-                this.versionCode = versionFormatter.parseVersion(appModuleConfig.app.versionName)
-                this.versionName = appModuleConfig.app.versionName
+                this.versionCode = appModuleConfig.app.latestRelease.number
+                this.versionName = appModuleConfig.app.latestRelease.name
 
                 if (generateResAppName) {
                     resValue(
@@ -298,7 +295,7 @@ object BuildFileUtil {
                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
                 packageName = appModuleConfig.app.name // entspricht dem exe Name
-                packageVersion = appModuleConfig.app.versionName
+                packageVersion = appModuleConfig.app.latestRelease.name
                 description =
                     "${appModuleConfig.app.name} - Build at ${now.format(formatter)}"
                 copyright =
@@ -373,7 +370,7 @@ object BuildFileUtil {
     ) {
         val project = appModuleConfig.project
         val appName = appModuleConfig.app.name
-        val appVersionName = appModuleConfig.app.versionName
+        val appVersionName = appModuleConfig.app.latestRelease.name
         afterEvaluate {
             project.tasks.named("bundleRelease").configure {
                 finalizedBy("extractProguardMap")

@@ -58,8 +58,6 @@ dependencies {
     implementation(deps.yaml)
     implementation(libs.kotlinx.serialization.json)
 
-    implementation(deps.composechangelog.shared)
-
     implementation(gradleApi())
     implementation(gradleKotlinDsl())
 

@@ -4,13 +4,13 @@ import com.android.build.api.dsl.LibraryExtension
 import com.codingfeline.buildkonfig.compiler.FieldSpec.Type
 import com.codingfeline.buildkonfig.gradle.BuildKonfigExtension
 import com.codingfeline.buildkonfig.gradle.TargetConfigDsl
-import com.michaelflisar.composechangelog.format.ChangelogVersionFormatter
-import com.michaelflisar.composechangelog.format.DefaultVersionFormatter
 import com.michaelflisar.kmpdevtools.configs.AndroidLibraryConfig
 import com.michaelflisar.kmpdevtools.configs.AppModuleConfig
 import com.michaelflisar.kmpdevtools.configs.LibraryModuleConfig
 import com.michaelflisar.kmpdevtools.core.Target
 import com.michaelflisar.kmpdevtools.core.Config
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.gradle.api.JavaVersion
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
@@ -196,7 +196,6 @@ fun BuildKonfigExtension.isExe(project: Project): Boolean {
 fun BuildKonfigExtension.setupBuildKonfig(
     project: Project,
     config: Config,
-    versionFormatter: ChangelogVersionFormatter? = DefaultVersionFormatter(DefaultVersionFormatter.Format.MajorMinorPatch),
     exposeObjectWithName: String = "BuildKonfig",
     isDebug: Boolean? = null,
     isExe: Boolean? = null,
@@ -206,13 +205,8 @@ fun BuildKonfigExtension.setupBuildKonfig(
     packageName.set(app.namespace)
     this.exposeObjectWithName.set(exposeObjectWithName)
     defaultConfigs {
-        buildConfigField(Type.STRING, "versionName", app.versionName)
-        if (versionFormatter != null)
-            buildConfigField(
-                Type.INT,
-                "versionCode",
-                versionFormatter.parseVersion(app.versionName).toString()
-            )
+        buildConfigField(Type.STRING, "versionName", app.latestRelease.name)
+        buildConfigField(Type.STRING, "releasesJson", Json.encodeToString(app.releases))
         buildConfigField(Type.STRING, "namespace", app.namespace)
         buildConfigField(Type.STRING, "appName", app.name)
         if (isDebug != null)

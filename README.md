@@ -183,7 +183,7 @@ Die Datei enthält die projektweiten Angaben für Publishing, Module und die Dok
 | `publish` | `group-id`, Publishing-Ziele `release-target` und `test-target` (jeweils `none`, `maven-central` oder `github`; `test-target` ist optional, Standard `none`) und bei GitHub die Angaben `user`, `repo`, `branch` und `path`. Die README-Generierung verwendet nur `release-target`. |
 | `config` | `java-version` sowie `developer` mit Name, E-Mail, Maven-ID und GitHub-Benutzername. |
 | `project` | Projekt-Namespace, Repository-Name, Veröffentlichungsjahr (`release`) und Lizenz mit Name und Repository-Pfad. |
-| `apps` | Liste der Apps mit `name`, `namespace`, `version-name`, `main-path` und `target-paths`. Der optionale Abschnitt `publish` mit `path`, `description` und `target-path` aktiviert die Veröffentlichung der App als Demo; GitHub Pages unterstützt derzeit `target-path`-Werte, die mit `web` enden. Der README-Abschnitt „Demo“ verlinkt auf `main-path`. |
+| `apps` | Liste der Apps mit `name`, `namespace`, `releases` (Liste aus `name` und eindeutiger positiver `number`; die höchste Nummer ist das neueste Release), `main-path` und `target-paths`. Der optionale Abschnitt `publish` mit `path`, `description` und `target-path` aktiviert die Veröffentlichung der App als Demo; GitHub Pages unterstützt derzeit `target-path`-Werte, die mit `web` enden. Der README-Abschnitt „Demo“ verlinkt auf `main-path`. |
 | `modules` | `primary-artifact-id`, eine Modulliste mit Artifact-ID, Beschreibung und Pfad sowie eine XCFramework-Liste mit Name, Pfad und Targets. |
 | `documentation` | Dokumentationsordner, Ordner für Partials und Screenshots sowie optional der Pfad zum Haupt-Screenshot. |
 | `settings` | Optionale Einstellungen; `log-dependencies` ist standardmäßig `false`. |
