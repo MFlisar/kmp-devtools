@@ -23,6 +23,7 @@ env:
   DOTNET_VERSION: "8.0.x"
   LYCHEE_ARGS: >-
     --root-dir "${{ github.workspace }}" --verbose --no-progress
+    --exclude '(?i)^https://central\.sonatype\.com(?:/|$)'
     './**/*.md' './**/*.html'
 
 permissions:
@@ -70,27 +71,8 @@ jobs:
         shell: bash
         env:
           PUBLISH_URL_PATHS_JSON: ${{ steps.read-config.outputs.publish-url-paths-json }}
-          SONATYPE_LYCHEE_CONFIG: ${{ runner.temp }}/markdown-docs-lychee-sonatype.toml
         run: |
           set -euo pipefail
-          lychee_config="$RUNNER_TEMP/markdown-docs-lychee.toml"
-          cat > "$lychee_config" <<'TOML'
-          [hosts."central.sonatype.com"]
-          concurrency = 1
-          request_interval = "2s"
-          TOML
-          sonatype_lychee_config="$RUNNER_TEMP/markdown-docs-lychee-sonatype.toml"
-          cat > "$sonatype_lychee_config" <<TOML
-          cache = true
-          cache_exclude_status = "400.."
-          max_cache_age = "1d"
-          include = ['(?i)^https://central\.sonatype\.com(?:/|$)']
-
-          [hosts."central.sonatype.com"]
-          concurrency = 1
-          request_interval = "2s"
-          TOML
-          export LYCHEE_CONFIG="$lychee_config"
           ruby -rjson -e '
             owner, repository = ENV.fetch("GITHUB_REPOSITORY").split("/", 2)
             base_url = "https://#{owner}.github.io/#{repository}"
@@ -100,10 +82,8 @@ jobs:
               pattern = "(?i)^#{Regexp.escape(url)}/?(?:[?#].*)?$"
               "--exclude \u0027#{pattern}\u0027"
             end
-            excludes << "--exclude \u0027(?i)^https://central\\.sonatype\\.com(?:/|$)\u0027"
             File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |output|
-              output.puts("args=--config \"#{ENV.fetch("LYCHEE_CONFIG")}\" #{ENV.fetch("LYCHEE_ARGS")} #{excludes.join(" ")}")
-              output.puts("sonatype-args=--config \"#{ENV.fetch("SONATYPE_LYCHEE_CONFIG")}\" #{ENV.fetch("LYCHEE_ARGS")}")
+              output.puts("args=#{ENV.fetch("LYCHEE_ARGS")} #{excludes.join(" ")}")
             end
           '
 
@@ -113,31 +93,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: ${{ steps.lychee-args.outputs.args }}
-
-      - name: Restore Sonatype Lychee cache
-        id: restore-sonatype-cache
-        continue-on-error: true
-        uses: actions/cache/restore@v4
-        with:
-          path: .lycheecache
-          key: lychee-sonatype-v1-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: lychee-sonatype-v1-
-
-      - name: Check Sonatype links with Lychee
-        id: sonatype-link-check
-        uses: lycheeverse/lychee-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: ${{ steps.lychee-args.outputs.sonatype-args }}
-
-      - name: Save Sonatype Lychee cache
-        if: always() && steps.restore-sonatype-cache.conclusion == 'success' && steps.sonatype-link-check.outcome != 'skipped'
-        continue-on-error: true
-        uses: actions/cache/save@v4
-        with:
-          path: .lycheecache
-          key: lychee-sonatype-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Remove lychee folder
         run: rm -rf lychee
