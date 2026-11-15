@@ -82,7 +82,6 @@ jobs:
           sonatype_lychee_config="$RUNNER_TEMP/markdown-docs-lychee-sonatype.toml"
           cat > "$sonatype_lychee_config" <<TOML
           cache = true
-          cache_location = "$RUNNER_TEMP/lychee-sonatype.cache"
           cache_exclude_status = "400.."
           max_cache_age = "1d"
           include = ['(?i)^https://central\.sonatype\.com(?:/|$)']
@@ -91,7 +90,6 @@ jobs:
           concurrency = 1
           request_interval = "2s"
           TOML
-          touch "$RUNNER_TEMP/lychee-sonatype.cache"
           export LYCHEE_CONFIG="$lychee_config"
           ruby -rjson -e '
             owner, repository = ENV.fetch("GITHUB_REPOSITORY").split("/", 2)
@@ -121,7 +119,7 @@ jobs:
         continue-on-error: true
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/lychee-sonatype.cache
+          path: .lycheecache
           key: lychee-sonatype-v1-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: lychee-sonatype-v1-
 
@@ -138,7 +136,7 @@ jobs:
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/lychee-sonatype.cache
+          path: .lycheecache
           key: lychee-sonatype-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Remove lychee folder
